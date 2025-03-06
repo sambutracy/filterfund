@@ -1,0 +1,15 @@
+4. **Reload the Shell Configuration**: Run the following command to 
+apply the changes:
+   ```bash source ~/.bashrc ``` or ```bash source ~/.profile ```
+### Step 3: Start the Local DFINITY Network
+Once `dfx` is installed and available in your PATH, you can start the 
+local DFINITY network: ```bash dfx start --background ```
+### Step 4: Deploy the Canisters
+After starting the local network, deploy your canisters: ```bash dfx 
+deploy ```
+### Step 5: Run the Tests
+Finally, run your tests as previously described: ```bash dfx canister 
+call campaign_test testCreateCampaign dfx canister call filter_test 
+testUpdateFilterStats dfx canister call user_test testRegisterUser ```
+### Troubleshooting
+If you still encounter issues, please let me know, and I can assist you further!

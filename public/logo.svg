@@ -1,0 +1,32 @@
+<svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Radial gradient for the sun -->
+    <radialGradient id="sunGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFC00"/>
+      <stop offset="100%" stop-color="#FFDE00"/>
+    </radialGradient>
+    <style>
+      .text { font: bold 24px sans-serif; fill: #333; }
+      .lens { fill: none; stroke: #333; stroke-width: 4; }
+      .palm { fill: #333; }
+    </style>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="white"/>
+  
+  <!-- Sun with tropical yellow gradient -->
+  <circle cx="150" cy="150" r="100" fill="url(#sunGradient)"/>
+  
+  <!-- Minimalist camera lens symbolizing the filter aspect -->
+  <circle cx="150" cy="150" r="40" class="lens"/>
+  
+  <!-- Simple palm tree trunk -->
+  <path class="palm" d="M210,160 Q205,150 200,160 L200,230 Q205,240 210,230 Z" />
+  
+  <!-- Palm tree leaves -->
+  <path class="palm" d="M200,160 Q170,130 200,120 Q180,140 220,110 Q210,130 240,140 Z" />
+  
+  <!-- Brand Name -->
+  <text x="150" y="280" text-anchor="middle" class="text">FilterFund</text>
+</svg>
