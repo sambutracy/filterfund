@@ -12,7 +12,8 @@ const CreateCampaign: React.FC = () => {
     description: '',
     target: '',
     deadline: '',
-    image: ''
+    image: '',
+    filterUrl: ''
   });
 
   const handleFormFieldChange = (fieldName: string, e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -63,6 +64,57 @@ const CreateCampaign: React.FC = () => {
                 value={form.title}
                 onChange={(e) => handleFormFieldChange('title', e)}
               />
+              <div>
+  <label className="block text-gray-700 dark:text-gray-300 mb-2">
+    AR Filter Upload *
+  </label>
+  <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center">
+    <div className="mb-3">
+      <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <div className="flex justify-center text-sm text-gray-600 dark:text-gray-400">
+        <label htmlFor="file-upload" className="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-orange-600 dark:text-orange-400 hover:text-orange-500">
+          <span>Upload a file</span>
+          <input 
+            id="file-upload" 
+            name="file-upload" 
+            type="file" 
+            className="sr-only" 
+            accept=".jpg,.jpeg,.png,.gif,.mp4,.lens,.filter"
+            onChange={(e) => {
+              // Handle file change
+              if (e.target.files && e.target.files[0]) {
+                // Here you'd usually upload to storage and get a URL
+                console.log("File selected:", e.target.files[0]);
+              }
+            }}
+          />
+        </label>
+        <p className="pl-1">or drag and drop</p>
+      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400">
+        PNG, JPG, GIF up to 10MB (AR filter files also accepted)
+      </p>
+    </div>
+  </div>
+</div>
+
+<div>
+  <label className="block text-gray-700 dark:text-gray-300 mb-2">
+    Filter URL (Snapchat, Instagram, etc) *
+  </label>
+  <input
+    type="url"
+    className="w-full p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+    placeholder="https://lens.snapchat.com/your-filter-url"
+    value={form.filterUrl || ''}
+    onChange={(e) => handleFormFieldChange('filterUrl', e)}
+  />
+  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+    Add a direct link to your filter on the social media platform
+  </p>
+</div>
             </div>
           </div>
 

@@ -1,0 +1,50 @@
+{
+    "canisters": {
+      "campaign": {
+        "main": "canisters/campaign/main.mo",
+        "type": "motoko"
+      },
+      "filter": {
+        "main": "canisters/filter/main.mo",
+        "type": "motoko"
+      },
+      "user": {
+        "main": "canisters/user/main.mo",
+        "type": "motoko"
+      },
+      "frontend": {
+        "dependencies": [
+          "campaign",
+          "filter",
+          "user"
+        ],
+        "frontend": {
+          "entrypoint": "src/index.html"
+        },
+        "source": [
+          "src/",
+          "dist/",
+          "public/"
+        ],
+        "type": "assets"
+      }
+    },
+    "defaults": {
+      "build": {
+        "args": "",
+        "packtool": "vessel sources"
+      }
+    },
+    "networks": {
+      "local": {
+        "bind": "127.0.0.1:8000",
+        "type": "ephemeral"
+      },
+      "ic": {
+        "providers": ["https://mainnet.dfinity.network"],
+        "type": "persistent"
+      }
+    },
+    "version": 1,
+    "dfx": "0.15.1"
+  }
