@@ -1,0 +1,9 @@
+{
+    "version": "0.1.0",
+    "dependencies": {
+      "base": {
+        "git": "https://github.com/dfinity/motoko-base",
+        "branch": "moc-0.7.4"
+      }
+    }
+  }
