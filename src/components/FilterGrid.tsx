@@ -1,15 +1,7 @@
 // src/components/FilterGrid.tsx
 import React from 'react';
 import FilterCard from './FilterCard';
-
-interface Filter {
-  id: string;
-  title: string;
-  image: string;
-  filterUrl: string;
-  category: string;
-  creator: string;
-}
+import { Filter } from '../services/api';
 
 interface FilterGridProps {
   filters: Filter[];

@@ -4,80 +4,48 @@ import Layout from '../components/Layout';
 import DisplayCampaigns from '../components/DisplayCampaigns';
 import FilterGrid from '../components/FilterGrid';
 import { useStateContext } from '../context';
-
-interface Campaign {
-  id: string;
-  title: string;
-  description: string;
-  target: number;
-  deadline: number;
-  amountCollected: number;
-  image: string;
-  creator: string;
-}
-
-interface Filter {
-  id: string;
-  title: string;
-  image: string;
-  filterUrl: string;
-  category: string;
-  creator: string;
-}
-
-// Placeholder filters data
-const PLACEHOLDER_FILTERS: Filter[] = [
-  {
-    id: '1',
-    title: 'Women Empowerment Filter',
-    image: 'https://via.placeholder.com/400x300/FF69B4/FFFFFF?text=Women+Empowerment',
-    filterUrl: 'https://example.com/filter/1',
-    category: 'Equality',
-    creator: 'Jane Doe'
-  },
-  {
-    id: '2',
-    title: 'Climate Action Face Filter',
-    image: 'https://via.placeholder.com/400x300/00CED1/FFFFFF?text=Climate+Action',
-    filterUrl: 'https://example.com/filter/2',
-    category: 'Environment',
-    creator: 'John Smith'
-  },
-  {
-    id: '3',
-    title: 'Education For All',
-    image: 'https://via.placeholder.com/400x300/FFD700/FFFFFF?text=Education',
-    filterUrl: 'https://example.com/filter/3',
-    category: 'Education',
-    creator: 'Maria Garcia'
-  },
-  {
-    id: '4',
-    title: 'Healthcare Awareness',
-    image: 'https://via.placeholder.com/400x300/FF6347/FFFFFF?text=Healthcare',
-    filterUrl: 'https://example.com/filter/4',
-    category: 'Health',
-    creator: 'David Lee'
-  }
-];
+import API, { Campaign, Filter } from '../services/api';
 
 const HomePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [filters, setFilters] = useState<Filter[]>([]);
   const [activeTab, setActiveTab] = useState('campaigns'); // 'campaigns' or 'filters'
   
-  const { address, contract, getCampaigns } = useStateContext();
+  const { address, getCampaigns } = useStateContext();
 
   const fetchCampaigns = async () => {
     setIsLoading(true);
-    const data = await getCampaigns();
-    setCampaigns(data);
-    setIsLoading(false);
+    try {
+      // Use the context's getCampaigns method which now uses our mock API
+      const data = await getCampaigns();
+      setCampaigns(data);
+    } catch (error) {
+      console.error("Error fetching campaigns:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchFilters = async () => {
+    setIsLoading(true);
+    try {
+      const data = await API.getFilters();
+      setFilters(data);
+    } catch (error) {
+      console.error("Error fetching filters:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    if(contract) fetchCampaigns();
-  }, [address, contract]);
+    if (activeTab === 'campaigns') {
+      fetchCampaigns();
+    } else if (activeTab === 'filters') {
+      fetchFilters();
+    }
+  }, [activeTab, address]);
 
   return (
     <Layout>
@@ -114,7 +82,16 @@ const HomePage: React.FC = () => {
           <DisplayCampaigns 
             title="All Campaigns"
             isLoading={isLoading}
-            campaigns={campaigns}
+            campaigns={campaigns.map(campaign => ({
+              id: campaign.id,
+              title: campaign.title,
+              description: campaign.description,
+              target: campaign.target,
+              deadline: campaign.deadline,
+              amountCollected: campaign.amountCollected,
+              image: campaign.image,
+              creator: campaign.creator
+            }))}
           />
         )}
         
@@ -127,8 +104,8 @@ const HomePage: React.FC = () => {
               Browse and try AR filters created for social impact campaigns. Use these filters to spread awareness and support causes you care about.
             </p>
             <FilterGrid 
-              filters={PLACEHOLDER_FILTERS} 
-              isLoading={false} 
+              filters={filters} 
+              isLoading={isLoading} 
             />
           </>
         )}

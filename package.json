@@ -4,10 +4,6 @@
   "private": true,
   "dependencies": {
     "@craco/craco": "^7.1.0",
-    "@dfinity/agent": "^2.3.0",
-    "@dfinity/auth-client": "^2.3.0",
-    "@dfinity/candid": "^2.3.0",
-    "@dfinity/principal": "^2.3.0",
     "@privy-io/react-auth": "^2.6.1",
     "@react-three/drei": "^10.0.4",
     "@react-three/fiber": "^9.0.4",

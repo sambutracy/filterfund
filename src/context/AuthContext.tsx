@@ -1,9 +1,9 @@
 import React, { createContext, useState, useContext, ReactNode } from 'react';
-import { AuthClient } from '@dfinity/auth-client';
 
 type AuthContextType = {
   isAuthenticated: boolean;
   login: () => void;
+  logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -12,21 +12,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   const login = async () => {
-    const authClient = await AuthClient.create();
-    await authClient.login({
-      identityProvider: 'https://identity.ic0.app',
-      onSuccess: () => {
-        console.log('User logged in successfully!');
-        setIsAuthenticated(true);
-      },
-      onError: (err) => {
-        console.error('Login failed:', err);
-      },
-    });
+    // This would be replaced with your actual authentication logic
+    console.log('User logged in');
+    setIsAuthenticated(true);
+  };
+
+  const logout = async () => {
+    // This would be replaced with your actual logout logic
+    console.log('User logged out');
+    setIsAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

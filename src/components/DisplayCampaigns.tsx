@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
-interface Campaign {
+export interface Campaign {
   id: string;
   title: string;
   description: string;
@@ -138,4 +138,4 @@ const DisplayCampaigns: React.FC<DisplayCampaignsProps> = ({ title, isLoading, c
   );
 };
 
-export default DisplayCampaigns; 
+export default DisplayCampaigns;
