@@ -1,7 +1,7 @@
 // src/components/Navbar.tsx
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { usePrivy, User } from '@privy-io/react-auth';
+import { usePrivy } from '@privy-io/react-auth';
 import { motion } from 'framer-motion';
 import DarkModeToggle from './DarkModeToggle';
 

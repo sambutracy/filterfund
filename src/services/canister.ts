@@ -1,101 +1,30 @@
-// src/services/canister.ts
+// src/services/canister.ts - simplified version without name conflicts
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { AuthClient } from '@dfinity/auth-client';
 
-// Import the canister interfaces
-import { idlFactory as campaignIdlFactory } from '../../declarations/campaign/campaign.did.js';
-import { idlFactory as assetIdlFactory } from '../../declarations/asset/asset.did.js';
-import { idlFactory as userIdlFactory } from '../../declarations/user/user.did.js';
+// Import declarations - only import the IDL factories
+import { idlFactory as campaignIdlFactory } from "../declarations/campaign";
+import { idlFactory as assetIdlFactory } from "../declarations/asset";
+import { idlFactory as userIdlFactory } from "../declarations/user";
 
-// Type definitions based on our canisters
-export interface AssetType {
-  MainImage: null;
-  FilterImage: null;
-  Other: null;
-}
+// Import types with renamed interfaces to avoid conflicts
+import type { _SERVICE as CampaignServiceInterface, Campaign, CauseCategory, Donation, FilterDetails } from "../declarations/campaign/campaign.did.d";
+import type { _SERVICE as AssetServiceInterface, AssetType } from "../declarations/asset/asset.did.d";
+import type { _SERVICE as UserServiceInterface, UserProfile } from "../declarations/user/user.did.d";
 
-export interface CauseCategory {
-  Health: null;
-  Education: null;
-  Environment: null;
-  Equality: null;
-  Poverty: null;
-  HumanRights: null;
-  AnimalWelfare: null;
-  Other: null;
-}
+// Re-export types
+export type { Campaign, CauseCategory, Donation, FilterDetails, AssetType, UserProfile };
 
-export interface FilterDetails {
-  platform: string;
-  filterUrl: string;
-  previewImage: string;
-  filterType: string;
-  instructions: string;
-}
-
-export interface Donation {
-  donor: Principal;
-  amount: bigint;
-  message: [] | [string];
-  timestamp: bigint;
-  isAnonymous: boolean;
-}
-
-export interface Campaign {
-  id: bigint;
-  creator: Principal;
-  creatorName: string;
-  title: string;
-  description: string;
-  target: bigint;
-  deadline: bigint;
-  amountCollected: bigint;
-  mainImage: string;
-  filterImage: string;
-  category: CauseCategory;
-  filter: FilterDetails;
-  donations: Donation[];
-  isActive: boolean;
-  created: bigint;
-}
-
-export interface CreateCampaignRequest {
-  title: string;
-  description: string;
-  target: bigint;
-  deadline: bigint;
-  mainImage: string;
-  filterImage: string;
-  creatorName: string;
-  category: CauseCategory;
-  filter: FilterDetails;
-}
-
-export interface Asset {
-  id: string;
-  owner: Principal;
-  createdAt: bigint;
-  contentType: string;
-  filename: string;
-  chunkIds: bigint[];
-  assetType: AssetType;
-}
-
-export interface UserProfile {
-  principal: Principal;
-  username: string;
-  email: string;
-  bio: [] | [string];
-  avatarUrl: [] | [string];
-  socialLinks: string[];
-  created: bigint;
-  totalDonations: bigint;
-  campaignsCreated: bigint;
-}
+// Hardcoded canister IDs for when environment variables are not available
+const CANISTER_IDS = {
+  ASSET: "bkyz2-fmaaa-aaaaa-qaaaq-cai",
+  CAMPAIGN: "be2us-64aaa-aaaaa-qaabq-cai",
+  USER: "br5f7-7uaaa-aaaaa-qaaca-cai"
+};
 
 // Set up the host
-const host = process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://ic0.app';
+const host = "http://localhost:8000";
 
 // Create an auth client
 let authClient: AuthClient | null = null;
@@ -107,91 +36,46 @@ const initAuthClient = async (): Promise<AuthClient> => {
   return authClient;
 };
 
-// Create an agent
-const createAgent = async (forceRefresh = false): Promise<HttpAgent> => {
-  const auth = await initAuthClient();
+// Create an agent directly without relying on environment variables
+const createAgent = async (): Promise<HttpAgent> => {
+  const agent = new HttpAgent({ host });
   
-  if (forceRefresh) {
-    await auth.logout();
-  }
-  
-  if (!auth.isAuthenticated()) {
-    return new HttpAgent({ host });
-  }
-  
-  const identity = await auth.getIdentity();
-  const agent = new HttpAgent({ host, identity });
-  
-  // Locally we need to fetch the root key
-  if (process.env.NODE_ENV === 'development') {
-    await agent.fetchRootKey();
+  // Fetch the root key for development
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      await agent.fetchRootKey();
+    } catch (e) {
+      console.warn('Unable to fetch root key. Check if your local replica is running');
+      console.error(e);
+    }
   }
   
   return agent;
 };
 
-// Create actor instances for each canister
-const createCampaignActor = async () => {
+// Create actor instances directly with hardcoded canister IDs
+const createCampaignActor = async (): Promise<CampaignServiceInterface> => {
   const agent = await createAgent();
-  const canisterId = process.env.REACT_APP_CAMPAIGN_CANISTER_ID || 'campaign';
-  
-  return Actor.createActor(campaignIdlFactory, {
+  return Actor.createActor<CampaignServiceInterface>(campaignIdlFactory, {
     agent,
-    canisterId,
+    canisterId: CANISTER_IDS.CAMPAIGN,
   });
 };
 
-const createAssetActor = async () => {
+const createAssetActor = async (): Promise<AssetServiceInterface> => {
   const agent = await createAgent();
-  const canisterId = process.env.REACT_APP_ASSET_CANISTER_ID || 'asset';
-  
-  return Actor.createActor(assetIdlFactory, {
+  return Actor.createActor<AssetServiceInterface>(assetIdlFactory, {
     agent,
-    canisterId,
+    canisterId: CANISTER_IDS.ASSET,
   });
 };
 
-const createUserActor = async () => {
+const createUserActor = async (): Promise<UserServiceInterface> => {
   const agent = await createAgent();
-  const canisterId = process.env.REACT_APP_USER_CANISTER_ID || 'user';
-  
-  return Actor.createActor(userIdlFactory, {
+  return Actor.createActor<UserServiceInterface>(userIdlFactory, {
     agent,
-    canisterId,
+    canisterId: CANISTER_IDS.USER,
   });
-};
-
-// Authentication methods
-export const login = async (): Promise<boolean> => {
-  const auth = await initAuthClient();
-  
-  return new Promise((resolve) => {
-    auth.login({
-      identityProvider: process.env.NODE_ENV === 'development' 
-        ? `http://localhost:8000?canisterId=${process.env.REACT_APP_IDENTITY_CANISTER_ID}`
-        : 'https://identity.ic0.app',
-      onSuccess: () => resolve(true),
-      onError: () => resolve(false),
-    });
-  });
-};
-
-export const logout = async (): Promise<void> => {
-  const auth = await initAuthClient();
-  await auth.logout();
-};
-
-export const isAuthenticated = async (): Promise<boolean> => {
-  const auth = await initAuthClient();
-  return await auth.isAuthenticated();
-};
-
-export const getPrincipal = async (): Promise<Principal | null> => {
-  const auth = await initAuthClient();
-  if (await auth.isAuthenticated()) {
-    return auth.getIdentity().getPrincipal();
-  }
-  return null;
 };
 
 // User-related methods
@@ -228,7 +112,10 @@ export const getUserProfile = async (principal: Principal): Promise<UserProfile 
     const userActor = await createUserActor();
     const result = await userActor.getUserProfile(principal);
     
-    return result.length > 0 ? result[0] : null;
+    if (result.length > 0) {
+      return result[0] as UserProfile;
+    }
+    return null;
   } catch (error) {
     console.error('Error fetching user profile:', error);
     return null;
@@ -266,12 +153,16 @@ export const uploadAsset = async (
 ): Promise<string | Error> => {
   try {
     const assetActor = await createAssetActor();
+    const fileArrayBuffer = await file.arrayBuffer();
     
-    // Start asset upload to get an asset ID
+    // Create an asset type variant
+    const assetTypeObj: Record<string, null> = {};
+    assetTypeObj[assetType] = null;
+    
     const startResult = await assetActor.startAssetUpload(
       file.name,
       file.type,
-      { [assetType]: null }
+      assetTypeObj as unknown as AssetType
     );
     
     if ('err' in startResult) {
@@ -288,12 +179,13 @@ export const uploadAsset = async (
     while (offset < fileSize) {
       const end = Math.min(offset + chunkSize, fileSize);
       const chunk = file.slice(offset, end);
-      const arrayBuffer = await chunk.arrayBuffer();
+      const chunkArrayBuffer = await chunk.arrayBuffer();
+      const uint8Array = new Uint8Array(chunkArrayBuffer);
       
       // Upload the chunk
       const chunkResult = await assetActor.uploadChunk(
         assetId,
-        [...new Uint8Array(arrayBuffer)]
+        Array.from(uint8Array)
       );
       
       if ('err' in chunkResult) {
@@ -326,13 +218,18 @@ export const createCampaign = async (
   mainImageUrl: string,
   filterImageUrl: string,
   creatorName: string,
-  category: keyof CauseCategory,
-  filter: FilterDetails
+  category: string,
+  filterDetails: FilterDetails
 ): Promise<bigint | Error> => {
   try {
     const campaignActor = await createCampaignActor();
     
-    const request: CreateCampaignRequest = {
+    // Create a category object dynamically
+    const categoryObj: Record<string, null> = {};
+    categoryObj[category] = null;
+    
+    // Create the request
+    const request = {
       title,
       description,
       target: BigInt(target),
@@ -340,8 +237,8 @@ export const createCampaign = async (
       mainImage: mainImageUrl,
       filterImage: filterImageUrl,
       creatorName,
-      category: { [category]: null } as CauseCategory,
-      filter,
+      category: categoryObj as unknown as CauseCategory,
+      filter: filterDetails,
     };
     
     const result = await campaignActor.createCampaign(request);
@@ -372,7 +269,10 @@ export const getCampaign = async (id: bigint): Promise<Campaign | null> => {
     const campaignActor = await createCampaignActor();
     const result = await campaignActor.getCampaign(id);
     
-    return result.length > 0 ? result[0] : null;
+    if (result.length > 0) {
+      return result[0] as Campaign;
+    }
+    return null;
   } catch (error) {
     console.error('Error fetching campaign:', error);
     return null;
@@ -431,14 +331,8 @@ export const donateToCampaign = async (
   }
 };
 
-// Export all functions
+// Export all functions as a service
 export const CanisterService = {
-  // Auth methods
-  login,
-  logout,
-  isAuthenticated,
-  getPrincipal,
-  
   // User methods
   registerUser,
   getUserProfile,
