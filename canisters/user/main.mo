@@ -1,8 +1,13 @@
+// canisters/user/main.mo
 import Debug "mo:base/Debug";
 import Principal "mo:base/Principal";
 import HashMap "mo:base/HashMap";
 import Time "mo:base/Time";
 import Result "mo:base/Result";
+import Option "mo:base/Option";
+import Text "mo:base/Text";
+// Import the modified Text module we created
+import CustomText "../utils/Text"; 
 
 actor UserCanister {
     type UserProfile = {
@@ -22,12 +27,15 @@ actor UserCanister {
     public shared(msg) func registerUser(username: Text, email: Text, bio: ?Text, socialLinks: [Text]) : async Result.Result<Principal, Text> {
         let principal = msg.caller;
 
-        // Validate inputs
+        // Validate inputs - use our custom Text module functions
         if (Text.size(username) == 0) { return #err("Username cannot be empty") };
         if (Text.size(email) == 0) { return #err("Email cannot be empty") };
 
         // Check if user already exists
-        if (users.contains(principal)) { return #err("User already registered") };
+        switch (users.get(principal)) {
+            case (?_) { return #err("User already registered") };
+            case (null) { /* User does not exist, continue */ };
+        };
 
         let profile: UserProfile = {
             principal = principal;
@@ -56,18 +64,9 @@ actor UserCanister {
             case (?profile) {
                 let updatedProfile = {
                     profile with
-                    username = switch (username) {
-                        case (null) { profile.username };
-                        case (?newUsername) { newUsername };
-                    };
-                    bio = switch (bio) {
-                        case (null) { profile.bio };
-                        case (?newBio) { newBio };
-                    };
-                    socialLinks = switch (socialLinks) {
-                        case (null) { profile.socialLinks };
-                        case (?newLinks) { newLinks };
-                    };
+                    username = Option.get(username, profile.username);
+                    bio = Option.get(bio, profile.bio);
+                    socialLinks = Option.get(socialLinks, profile.socialLinks);
                 };
 
                 users.put(principal, updatedProfile);
@@ -82,8 +81,8 @@ actor UserCanister {
 
         switch (users.get(principal)) {
             case (null) { return false; };
-            case (?profile) {
-                users.remove(principal);
+            case (?_) {
+                users.delete(principal);
                 true
             };
         }

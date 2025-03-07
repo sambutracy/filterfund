@@ -8,6 +8,8 @@ import Text "mo:base/Text";
 import Time "mo:base/Time";
 import Result "mo:base/Result";
 import Iter "mo:base/Iter";
+import Array "mo:base/Array";
+import CustomText "../utils/Text"; // Import the custom Text module
 
 actor FilterCanister {
     type FilterStats = Types.FilterStats;
