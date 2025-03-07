@@ -1,0 +1,40 @@
+{
+    "canisters": {
+      "campaign": {
+        "main": "canisters/campaign/main.mo",
+        "type": "motoko"
+      },
+      "asset": {
+        "main": "canisters/asset/main.mo",
+        "type": "motoko"
+      },
+      "user": {
+        "main": "canisters/user/main.mo",
+        "type": "motoko"
+      },
+      "frontend": {
+        "dependencies": [
+          "campaign",
+          "asset",
+          "user"
+        ],
+        "frontend": {
+          "entrypoint": "src/index.html"
+        },
+        "source": [
+          "src/",
+          "public/"
+        ],
+        "type": "assets"
+      }
+    },
+    "defaults": {
+      "build": {
+        "args": "",
+        "packtool": ""
+      }
+    },
+    "version": 1,
+    "dfx": "0.15.1"
+  }
+  
