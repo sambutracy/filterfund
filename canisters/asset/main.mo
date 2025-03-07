@@ -1,6 +1,7 @@
 // Asset Canister for handling file uploads (images)
 import Array "mo:base/Array";
 import Blob "mo:base/Blob";
+import Buffer "mo:base/Buffer";
 import Cycles "mo:base/ExperimentalCycles";
 import Debug "mo:base/Debug";
 import HashMap "mo:base/HashMap";
@@ -12,6 +13,7 @@ import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Time "mo:base/Time";
+import Int "mo:base/Int";
 
 actor AssetCanister {
     
@@ -77,36 +79,95 @@ actor AssetCanister {
     
     // State variables
     private stable var nextChunkId: Nat = 0;
-    private stable var assetsEntries: [(AssetId, Asset)] = [];
-    private stable var chunksEntries: [(ChunkId, AssetChunk)] = [];
+    private stable var assetsArray: [(AssetId, Asset)] = [];
+    private stable var chunksArray: [(ChunkId, AssetChunk)] = [];
     
+    // Using simple storage instead of HashMap
     private var assets = HashMap.HashMap<AssetId, Asset>(
         0, Text.equal, Text.hash
     );
     
-    private var chunks = HashMap.HashMap<ChunkId, AssetChunk>(
-        0, Nat.equal, Hash.hash
-    );
+    // Using arrays for chunks instead of HashMap
+    private var chunks: [var ?AssetChunk] = [var];
     
     // Initialize state from stable variables on upgrade
     system func preupgrade() {
-        assetsEntries := Iter.toArray(assets.entries());
-        chunksEntries := Iter.toArray(chunks.entries());
+        assetsArray := Iter.toArray(assets.entries());
+        
+        // Convert chunks array to stable storage
+        let stableChunks = Buffer.Buffer<(ChunkId, AssetChunk)>(chunks.size());
+        for (i in Iter.range(0, chunks.size() - 1)) {
+            switch(chunks[i]) {
+                case null { /* Skip */ };
+                case (?chunk) { stableChunks.add((i, chunk)); };
+            };
+        };
+        chunksArray := Buffer.toArray(stableChunks);
     };
     
     system func postupgrade() {
         assets := HashMap.fromIter<AssetId, Asset>(
-            assetsEntries.vals(), 10, Text.equal, Text.hash
+            assetsArray.vals(), 10, Text.equal, Text.hash
         );
-        chunks := HashMap.fromIter<ChunkId, AssetChunk>(
-            chunksEntries.vals(), 10, Nat.equal, Hash.hash
-        );
+        
+        // Determine the max chunk ID
+        var maxChunkId: Nat = 0;
+        for ((id, _) in chunksArray.vals()) {
+            if (id > maxChunkId) {
+                maxChunkId := id;
+            };
+        };
+        
+        // Initialize chunks array
+        chunks := Array.init<?AssetChunk>(maxChunkId + 1, null);
+        
+        // Populate chunks array
+        for ((id, chunk) in chunksArray.vals()) {
+            chunks[id] := ?chunk;
+        };
+    };
+    
+    // Helper function to convert Int to Text
+    private func intToText(n: Int) : Text {
+        var text = "";
+        var value = n;
+        
+        if (value == 0) {
+            return "0";
+        };
+        
+        if (value < 0) {
+            text := "-";
+            value := -value;
+        };
+        
+        var digits = "";
+        while (value > 0) {
+            let digit = value % 10;
+            // Convert digit to character and prepend to digits string
+            switch (digit) {
+                case 0 { digits := "0" # digits; };
+                case 1 { digits := "1" # digits; };
+                case 2 { digits := "2" # digits; };
+                case 3 { digits := "3" # digits; };
+                case 4 { digits := "4" # digits; };
+                case 5 { digits := "5" # digits; };
+                case 6 { digits := "6" # digits; };
+                case 7 { digits := "7" # digits; };
+                case 8 { digits := "8" # digits; };
+                case 9 { digits := "9" # digits; };
+                case _ { /* Not possible */ };
+            };
+            value := value / 10;
+        };
+        
+        return text # digits;
     };
     
     // Helper functions
     private func generateAssetId(principal: Principal, filename: Text, timestamp: Int) : AssetId {
         let principalText = Principal.toText(principal);
-        let timestampText = Int.toText(timestamp);
+        let timestampText = intToText(timestamp);
         principalText # "-" # filename # "-" # timestampText
     };
     
@@ -126,6 +187,29 @@ actor AssetCanister {
         };
         
         false
+    };
+    
+    // Helper function to get a chunk
+    private func getChunk(id: ChunkId) : ?AssetChunk {
+        if (id >= chunks.size()) {
+            return null;
+        };
+        return chunks[id];
+    };
+    
+    // Helper function to store a chunk
+    private func storeChunk(chunk: AssetChunk) : () {
+        let id = chunk.id;
+        if (id >= chunks.size()) {
+            // Resize the array if needed
+            let newSize = id + 10; // Add some buffer space
+            let newArray = Array.init<?AssetChunk>(newSize, null);
+            for (i in Iter.range(0, chunks.size() - 1)) {
+                newArray[i] := chunks[i];
+            };
+            chunks := newArray;
+        };
+        chunks[id] := ?chunk;
     };
     
     // Asset management functions
@@ -187,12 +271,19 @@ actor AssetCanister {
                     data = data;
                 };
                 
-                chunks.put(chunkId, chunk);
+                // Store the chunk
+                storeChunk(chunk);
                 
-                let updatedChunkIds = Array.append(asset.chunkIds, [chunkId]);
+                // Update the asset's chunk IDs
+                let chunkIdsBuffer = Buffer.Buffer<ChunkId>(asset.chunkIds.size() + 1);
+                for (id in asset.chunkIds.vals()) {
+                    chunkIdsBuffer.add(id);
+                };
+                chunkIdsBuffer.add(chunkId);
+                
                 let updatedAsset = {
                     asset with
-                    chunkIds = updatedChunkIds;
+                    chunkIds = Buffer.toArray(chunkIdsBuffer);
                 };
                 
                 assets.put(assetId, updatedAsset);
@@ -219,8 +310,8 @@ actor AssetCanister {
                     return #err("No chunks uploaded for this asset");
                 };
                 
-                // Return the asset URL
-                let assetUrl = "http://" # Principal.toText(Principal.fromActor(this)) # ".raw.ic0.app/asset/" # assetId;
+                // Return the asset URL - using hardcoded canister ID for simplicity
+                let assetUrl = "http://bkyz2-fmaaa-aaaaa-qaaaq-cai.raw.ic0.app/asset/" # assetId;
                 #ok(assetUrl);
             };
         };
@@ -248,7 +339,7 @@ actor AssetCanister {
         let assetChunks = Buffer.Buffer<Blob>(0);
         
         for (chunkId in asset.chunkIds.vals()) {
-            switch (chunks.get(chunkId)) {
+            switch (getChunk(chunkId)) {
                 case (null) { /* Skip */ };
                 case (?chunk) { assetChunks.add(chunk.data); };
             };
@@ -337,7 +428,9 @@ actor AssetCanister {
                 
                 // Remove all chunks
                 for (chunkId in asset.chunkIds.vals()) {
-                    chunks.delete(chunkId);
+                    if (chunkId < chunks.size()) {
+                        chunks[chunkId] := null;
+                    };
                 };
                 
                 // Remove the asset
@@ -349,10 +442,6 @@ actor AssetCanister {
     };
     
     // System functions
-    system func cycleBalance() : async Nat {
-        Cycles.balance();
-    };
-    
     public func acceptCycles() : async () {
         let available = Cycles.available();
         let accepted = Cycles.accept(available);

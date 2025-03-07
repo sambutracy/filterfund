@@ -1,0 +1,52 @@
+// Version: 1.0.0
+type Campaign =
+  {
+    amountCollected : Nat;
+    category : CauseCategory;
+    created : Int;
+    creator : Principal;
+    creatorName : Text;
+    deadline : Int;
+    description : Text;
+    donations : [Donation];
+    filter : FilterDetails;
+    filterImage : Text;
+    id : CampaignId;
+    isActive : Bool;
+    mainImage : Text;
+    target : Nat;
+    title : Text
+  };
+type CampaignId = Nat;
+type CauseCategory =
+  {
+    #AnimalWelfare;
+    #Education;
+    #Environment;
+    #Equality;
+    #Health;
+    #HumanRights;
+    #Other;
+    #Poverty
+  };
+type Donation =
+  {
+    amount : Nat;
+    donor : Principal;
+    isAnonymous : Bool;
+    message : ?Text;
+    timestamp : Int
+  };
+type FilterDetails =
+  {
+    filterType : Text;
+    filterUrl : Text;
+    instructions : Text;
+    platform : Text;
+    previewImage : Text
+  };
+actor {
+  stable var campaignsArray : [Campaign];
+  stable var nextCampaignId : Nat;
+  stable var userCampaignsEntries : [(Principal, [CampaignId])]
+};

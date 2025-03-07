@@ -5,7 +5,6 @@ import Buffer "mo:base/Buffer";
 import Debug "mo:base/Debug";
 import Error "mo:base/Error";
 import Float "mo:base/Float";
-import Hash "mo:base/Hash";
 import HashMap "mo:base/HashMap";
 import Int "mo:base/Int";
 import Iter "mo:base/Iter";
@@ -15,6 +14,7 @@ import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Time "mo:base/Time";
+import Order "mo:base/Order";
 
 actor CampaignCanister {
     // Type definitions
@@ -80,12 +80,11 @@ actor CampaignCanister {
 
     // State variables
     private stable var nextCampaignId: Nat = 0;
-    private stable var campaignsEntries : [(CampaignId, Campaign)] = [];
+    private stable var campaignsArray : [Campaign] = [];
     private stable var userCampaignsEntries : [(Principal, [CampaignId])] = [];
     
-    private var campaigns = HashMap.HashMap<CampaignId, Campaign>(
-        0, Nat.equal, Hash.hash
-    );
+    // Using a simple array-based approach instead of HashMap which is causing issues
+    private var campaignsData : [var Campaign] = [var];
     
     private var userCampaigns = HashMap.HashMap<Principal, [CampaignId]>(
         0, Principal.equal, Principal.hash
@@ -93,14 +92,15 @@ actor CampaignCanister {
 
     // Initialize state from stable variables on upgrade
     system func preupgrade() {
-        campaignsEntries := Iter.toArray(campaigns.entries());
+        campaignsArray := Array.freeze(campaignsData);
         userCampaignsEntries := Iter.toArray(userCampaigns.entries());
     };
 
     system func postupgrade() {
-        campaigns := HashMap.fromIter<CampaignId, Campaign>(
-            campaignsEntries.vals(), 10, Nat.equal, Hash.hash
-        );
+        // Initialize campaigns array
+        campaignsData := Array.thaw(campaignsArray);
+        
+        // Initialize user campaigns map
         userCampaigns := HashMap.fromIter<Principal, [CampaignId]>(
             userCampaignsEntries.vals(), 10, Principal.equal, Principal.hash
         );
@@ -113,9 +113,32 @@ actor CampaignCanister {
                 userCampaigns.put(userId, [campaignId]);
             };
             case (?campaigns) {
-                userCampaigns.put(userId, Array.append(campaigns, [campaignId]));
+                // Using Buffer instead of Array.append for better performance
+                let buffer = Buffer.Buffer<CampaignId>(campaigns.size() + 1);
+                for (id in campaigns.vals()) {
+                    buffer.add(id);
+                };
+                buffer.add(campaignId);
+                userCampaigns.put(userId, Buffer.toArray(buffer));
             };
         };
+    };
+
+    // Helper function to find a campaign by ID
+    private func findCampaign(id: CampaignId) : ?Campaign {
+        if (id >= campaignsData.size()) {
+            return null;
+        };
+        return ?campaignsData[id];
+    };
+
+    // Helper function to update a campaign
+    private func updateCampaign(id: CampaignId, campaign: Campaign) : Bool {
+        if (id >= campaignsData.size()) {
+            return false;
+        };
+        campaignsData[id] := campaign;
+        return true;
     };
 
     private func validateCampaignRequest(request: CreateCampaignRequest) : Result.Result<(), Text> {
@@ -167,7 +190,15 @@ actor CampaignCanister {
             created = Time.now();
         };
 
-        campaigns.put(campaignId, newCampaign);
+        // Add to array (expand if needed)
+        if (campaignId >= campaignsData.size()) {
+            let newSize = campaignId + 1;
+            let newArray = Array.init<Campaign>(newSize, newCampaign);
+            campaignsData := Array.thaw(Array.freeze(newArray));
+        } else {
+            campaignsData[campaignId] := newCampaign;
+        };
+        
         addToUserCampaigns(caller, campaignId);
         
         nextCampaignId += 1;
@@ -175,16 +206,21 @@ actor CampaignCanister {
     };
 
     public query func getCampaign(id: CampaignId) : async ?Campaign {
-        campaigns.get(id);
+        findCampaign(id)
     };
 
     public query func getAllCampaigns() : async [Campaign] {
-        Iter.toArray(campaigns.vals());
+        // Filter out empty slots if any
+        let buffer = Buffer.Buffer<Campaign>(campaignsData.size());
+        for (i in campaignsData.vals()) {
+            buffer.add(i);
+        };
+        Buffer.toArray(buffer)
     };
 
     public query func getCampaignsByCategory(category: CauseCategory) : async [Campaign] {
         let filtered = Buffer.Buffer<Campaign>(0);
-        for (campaign in campaigns.vals()) {
+        for (campaign in campaignsData.vals()) {
             if (campaign.category == category) {
                 filtered.add(campaign);
             };
@@ -201,7 +237,7 @@ actor CampaignCanister {
         
         let result = Buffer.Buffer<Campaign>(0);
         for (id in userCampaignIds.vals()) {
-            switch (campaigns.get(id)) {
+            switch (findCampaign(id)) {
                 case (null) { /* Skip */ };
                 case (?campaign) { result.add(campaign); };
             };
@@ -221,7 +257,7 @@ actor CampaignCanister {
             return #err("Donation amount must be greater than 0");
         };
         
-        switch (campaigns.get(campaignId)) {
+        switch (findCampaign(campaignId)) {
             case (null) { return #err("Campaign not found"); };
             case (?campaign) {
                 if (not campaign.isActive) {
@@ -240,7 +276,14 @@ actor CampaignCanister {
                     isAnonymous = isAnonymous;
                 };
                 
-                let updatedDonations = Array.append(campaign.donations, [donation]);
+                // Using Buffer instead of Array.append for better performance
+                let donationsBuffer = Buffer.Buffer<Donation>(campaign.donations.size() + 1);
+                for (d in campaign.donations.vals()) {
+                    donationsBuffer.add(d);
+                };
+                donationsBuffer.add(donation);
+                let updatedDonations = Buffer.toArray(donationsBuffer);
+                
                 let updatedAmountCollected = campaign.amountCollected + amount;
                 
                 let updatedCampaign = {
@@ -249,8 +292,12 @@ actor CampaignCanister {
                     amountCollected = updatedAmountCollected;
                 };
                 
-                campaigns.put(campaignId, updatedCampaign);
-                #ok(());
+                let success = updateCampaign(campaignId, updatedCampaign);
+                if (success) {
+                    #ok(());
+                } else {
+                    #err("Failed to update campaign");
+                };
             };
         };
     };
@@ -258,7 +305,7 @@ actor CampaignCanister {
     public shared(msg) func updateCampaignStatus(campaignId: CampaignId, isActive: Bool) : async Result.Result<(), Text> {
         let caller = msg.caller;
         
-        switch (campaigns.get(campaignId)) {
+        switch (findCampaign(campaignId)) {
             case (null) { return #err("Campaign not found"); };
             case (?campaign) {
                 if (not Principal.equal(caller, campaign.creator)) {
@@ -270,8 +317,12 @@ actor CampaignCanister {
                     isActive = isActive;
                 };
                 
-                campaigns.put(campaignId, updatedCampaign);
-                #ok(());
+                let success = updateCampaign(campaignId, updatedCampaign);
+                if (success) {
+                    #ok(());
+                } else {
+                    #err("Failed to update campaign");
+                };
             };
         };
     };
@@ -279,7 +330,7 @@ actor CampaignCanister {
     // Query functions for statistics and reporting
     public query func getActiveCampaigns() : async [Campaign] {
         let filtered = Buffer.Buffer<Campaign>(0);
-        for (campaign in campaigns.vals()) {
+        for (campaign in campaignsData.vals()) {
             if (campaign.isActive and campaign.deadline > Time.now()) {
                 filtered.add(campaign);
             };
@@ -287,16 +338,33 @@ actor CampaignCanister {
         Buffer.toArray(filtered);
     };
 
+    // Helper function for Array.sort that returns Order
+    private func compareByAmount(a: Campaign, b: Campaign) : Order.Order {
+        if (a.amountCollected > b.amountCollected) {
+            #less    // We want descending order for amount
+        } else if (a.amountCollected < b.amountCollected) {
+            #greater
+        } else {
+            #equal
+        }
+    };
+
+    // Helper function for Array.sort that returns Order for created timestamp
+    private func compareByCreated(a: Campaign, b: Campaign) : Order.Order {
+        if (a.created > b.created) {
+            #less    // We want descending order for newest first
+        } else if (a.created < b.created) {
+            #greater
+        } else {
+            #equal
+        }
+    };
+
     public query func getTopCampaigns(limit: Nat) : async [Campaign] {
-        var allCampaigns = Iter.toArray(campaigns.vals());
+        var allCampaigns = Array.freeze(campaignsData);
         
         // Sort by amount collected (descending)
-        allCampaigns := Array.sort(
-            allCampaigns,
-            func(a: Campaign, b: Campaign): Bool {
-                a.amountCollected > b.amountCollected
-            }
-        );
+        allCampaigns := Array.sort(allCampaigns, compareByAmount);
         
         // Take only the specified limit
         if (allCampaigns.size() <= limit) {
@@ -307,15 +375,10 @@ actor CampaignCanister {
     };
 
     public query func getRecentCampaigns(limit: Nat) : async [Campaign] {
-        var allCampaigns = Iter.toArray(campaigns.vals());
+        var allCampaigns = Array.freeze(campaignsData);
         
         // Sort by creation time (descending)
-        allCampaigns := Array.sort(
-            allCampaigns,
-            func(a: Campaign, b: Campaign): Bool {
-                a.created > b.created
-            }
-        );
+        allCampaigns := Array.sort(allCampaigns, compareByCreated);
         
         // Take only the specified limit
         if (allCampaigns.size() <= limit) {
@@ -326,7 +389,7 @@ actor CampaignCanister {
     };
 
     public query func getCampaignDonors(campaignId: CampaignId) : async [Principal] {
-        switch (campaigns.get(campaignId)) {
+        switch (findCampaign(campaignId)) {
             case (null) { [] };
             case (?campaign) {
                 let donors = Buffer.Buffer<Principal>(0);
@@ -341,6 +404,6 @@ actor CampaignCanister {
     };
 
     public query func getCampaignCount() : async Nat {
-        campaigns.size();
+        campaignsData.size();
     };
 };

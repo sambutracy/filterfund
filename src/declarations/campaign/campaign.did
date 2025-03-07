@@ -1,0 +1,82 @@
+type Result_1 = 
+ variant {
+   err: text;
+   ok: CampaignId;
+ };
+type Result = 
+ variant {
+   err: text;
+   ok;
+ };
+type FilterDetails = 
+ record {
+   filterType: text;
+   filterUrl: text;
+   instructions: text;
+   platform: text;
+   previewImage: text;
+ };
+type Donation = 
+ record {
+   amount: nat;
+   donor: principal;
+   isAnonymous: bool;
+   message: opt text;
+   timestamp: int;
+ };
+type CreateCampaignRequest = 
+ record {
+   category: CauseCategory;
+   creatorName: text;
+   deadline: int;
+   description: text;
+   filter: FilterDetails;
+   filterImage: text;
+   mainImage: text;
+   target: nat;
+   title: text;
+ };
+type CauseCategory = 
+ variant {
+   AnimalWelfare;
+   Education;
+   Environment;
+   Equality;
+   Health;
+   HumanRights;
+   Other;
+   Poverty;
+ };
+type CampaignId = nat;
+type Campaign = 
+ record {
+   amountCollected: nat;
+   category: CauseCategory;
+   created: int;
+   creator: principal;
+   creatorName: text;
+   deadline: int;
+   description: text;
+   donations: vec Donation;
+   filter: FilterDetails;
+   filterImage: text;
+   id: CampaignId;
+   isActive: bool;
+   mainImage: text;
+   target: nat;
+   title: text;
+ };
+service : {
+  createCampaign: (CreateCampaignRequest) -> (Result_1);
+  donateToCampaign: (CampaignId, nat, opt text, bool) -> (Result);
+  getActiveCampaigns: () -> (vec Campaign) query;
+  getAllCampaigns: () -> (vec Campaign) query;
+  getCampaign: (CampaignId) -> (opt Campaign) query;
+  getCampaignCount: () -> (nat) query;
+  getCampaignDonors: (CampaignId) -> (vec principal) query;
+  getCampaignsByCategory: (CauseCategory) -> (vec Campaign) query;
+  getMyCampaigns: () -> (vec Campaign) query;
+  getRecentCampaigns: (nat) -> (vec Campaign) query;
+  getTopCampaigns: (nat) -> (vec Campaign) query;
+  updateCampaignStatus: (CampaignId, bool) -> (Result);
+}

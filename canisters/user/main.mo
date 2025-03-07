@@ -8,6 +8,8 @@ import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Time "mo:base/Time";
+import Char "mo:base/Char";
+import Nat32 "mo:base/Nat32";
 
 actor UserCanister {
     // Type definitions
@@ -41,6 +43,26 @@ actor UserCanister {
         users := HashMap.fromIter<Principal, UserProfile>(
             userEntriesStable.vals(), 10, Principal.equal, Principal.hash
         );
+    };
+    
+    // Helper functions for lowercase conversion
+    private func charToLower(c: Char) : Char {
+        let n = Char.toNat32(c);
+        if (n >= 65 and n <= 90) {
+            // If uppercase ASCII letter (A-Z), convert to lowercase
+            Char.fromNat32(n + 32)
+        } else {
+            c
+        }
+    };
+    
+    private func textToLower(t: Text) : Text {
+        let cs = Text.toIter(t);
+        var result = "";
+        for (c in cs) {
+            result := result # Char.toText(charToLower(c));
+        };
+        result
     };
     
     // User management functions
@@ -142,8 +164,14 @@ actor UserCanister {
                     profile with
                     username = Option.get(username, profile.username);
                     email = Option.get(email, profile.email);
-                    bio = Option.orElse(bio, profile.bio);
-                    avatarUrl = Option.orElse(avatarUrl, profile.avatarUrl);
+                    bio = switch(bio) {
+                        case (null) { profile.bio };
+                        case (?value) { ?value };
+                    };
+                    avatarUrl = switch(avatarUrl) {
+                        case (null) { profile.avatarUrl };
+                        case (?value) { ?value };
+                    };
                     socialLinks = Option.get(socialLinks, profile.socialLinks);
                 };
                 
@@ -210,13 +238,13 @@ actor UserCanister {
     };
     
     public query func searchUsers(term: Text) : async [UserProfile] {
-        let searchTerm = Text.toLowercase(term);
+        let searchTerm = textToLower(term);
         
         let matches = Iter.toArray(Iter.filter(users.vals(), func (profile: UserProfile) : Bool {
-            Text.contains(Text.toLowercase(profile.username), #text searchTerm) or
+            Text.contains(textToLower(profile.username), #text searchTerm) or
             (switch (profile.bio) {
                 case (null) { false };
-                case (?bio) { Text.contains(Text.toLowercase(bio), #text searchTerm) };
+                case (?bio) { Text.contains(textToLower(bio), #text searchTerm) };
             })
         }));
         
