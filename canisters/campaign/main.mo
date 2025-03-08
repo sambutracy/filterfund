@@ -1,15 +1,10 @@
 // Campaign Canister
 import Array "mo:base/Array";
-import Blob "mo:base/Blob";
 import Buffer "mo:base/Buffer";
-import Debug "mo:base/Debug";
-import Error "mo:base/Error";
-import Float "mo:base/Float";
 import HashMap "mo:base/HashMap";
 import Int "mo:base/Int";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
-import Option "mo:base/Option";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 import Text "mo:base/Text";

@@ -1,40 +1,27 @@
 {
-    "canisters": {
+  "canisters": {
       "campaign": {
-        "main": "canisters/campaign/main.mo",
-        "type": "motoko"
+          "type": "motoko",
+          "main": "canisters/campaign/main.mo"
       },
       "asset": {
-        "main": "canisters/asset/main.mo",
-        "type": "motoko"
+          "type": "motoko", 
+          "main": "canisters/asset/main.mo"
       },
       "user": {
-        "main": "canisters/user/main.mo",
-        "type": "motoko"
+          "type": "motoko",
+          "main": "canisters/user/main.mo"
       },
       "frontend": {
-        "dependencies": [
-          "campaign",
-          "asset",
-          "user"
-        ],
-        "frontend": {
-          "entrypoint": "src/index.html"
-        },
-        "source": [
-          "src/",
-          "public/"
-        ],
-        "type": "assets"
+          "type": "assets",
+          "source": ["src", "public"]
       }
-    },
-    "defaults": {
+  },
+  "defaults": {
       "build": {
-        "args": "",
-        "packtool": ""
+          "args": "",
+          "packtool": ""
       }
-    },
-    "version": 1,
-    "dfx": "0.15.1"
-  }
-  
+  },
+  "version": 1
+}

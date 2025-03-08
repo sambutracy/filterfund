@@ -1,14 +1,11 @@
 // Asset Canister for handling file uploads (images)
 import Array "mo:base/Array";
-import Blob "mo:base/Blob";
 import Buffer "mo:base/Buffer";
 import Cycles "mo:base/ExperimentalCycles";
-import Debug "mo:base/Debug";
 import HashMap "mo:base/HashMap";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";
-import Option "mo:base/Option";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 import Text "mo:base/Text";
