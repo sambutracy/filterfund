@@ -258,6 +258,9 @@ input, textarea, select {
   @apply p-4 rounded-lg mb-4;
 }
 
+.progress-bar {
+  width: var(--progress-width);
+}
 .alert-success {
   @apply bg-lime-100 dark:bg-lime-900 
          text-lime-700 dark:text-lime-300;
@@ -287,9 +290,26 @@ input, textarea, select {
 
 /* Prevent layout shift when switching themes */
 html {
+  /* Webkit browsers */
+  ::-webkit-scrollbar {
+    width: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: #f97316;
+    border-radius: 6px;
+  }
+  /* Firefox */
   scrollbar-color: #f97316 transparent;
+  scrollbar-width: thin;
 }
 
 html.dark {
+  ::-webkit-scrollbar-thumb {
+    background-color: #fb923c;
+  }
   scrollbar-color: #fb923c transparent;
+  scrollbar-width: thin;
 }

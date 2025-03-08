@@ -1,18 +1,25 @@
+// src/declarations/user/index.js
 import { Actor, HttpAgent } from "@dfinity/agent";
+// Import our centralized config
+import { config } from "../../config/env";
 
 // Imports and re-exports candid interface
 import { idlFactory } from "./user.did.js";
 export { idlFactory } from "./user.did.js";
 
-/* CANISTER_ID is replaced by webpack based on node environment
- * Note: canister environment variable will be standardized as
- * process.env.CANISTER_ID_<CANISTER_NAME_UPPERCASE>
- * beginning in dfx 0.15.0
- */
-export const canisterId =
-  process.env.CANISTER_ID_USER;
+// Use the canister ID from our centralized config
+export const canisterId = config.canisterIds.USER;
+
+// Log the canister ID for debugging
+console.log("User canister ID:", canisterId);
 
 export const createActor = (canisterId, options = {}) => {
+  // Ensure canisterId is defined
+  if (!canisterId) {
+    console.error("User canister ID is undefined!");
+    throw new Error("User canister ID is undefined. Check environment configuration.");
+  }
+  
   const agent = options.agent || new HttpAgent({ ...options.agentOptions });
 
   if (options.agent && options.agentOptions) {
@@ -22,7 +29,7 @@ export const createActor = (canisterId, options = {}) => {
   }
 
   // Fetch root key for certificate validation during development
-  if (process.env.DFX_NETWORK !== "ic") {
+  if (config.isDevelopment) {
     agent.fetchRootKey().catch((err) => {
       console.warn(
         "Unable to fetch root key. Check to ensure that your local replica is running"
@@ -39,4 +46,4 @@ export const createActor = (canisterId, options = {}) => {
   });
 };
 
-export const user = canisterId ? createActor(canisterId) : undefined;
+export const user = createActor(canisterId);

@@ -4,14 +4,18 @@ import { ThemeProvider } from 'next-themes';
 import { PrivyProvider } from '@privy-io/react-auth';
 import { StateContextProvider } from './context';
 import AppRoutes from './AppRoutes';
-import { privyAppId } from './canister-config';
 
-// Make sure the app ID exists
-if (!privyAppId) {
-  throw new Error('Missing Privy App ID. Make sure REACT_APP_PRIVY_APP_ID is set in your environment.');
-}
+// Import centralized config
+import { config } from './config/env';
 
 const App: React.FC = () => {
+  // Get Privy App ID from centralized config
+  const PRIVY_APP_ID = config.privyAppId;
+
+  if (!PRIVY_APP_ID) {
+    throw new Error('Missing Privy App ID in environment configuration');
+  }
+
   return (
     <ThemeProvider 
       attribute="class" 
@@ -19,7 +23,7 @@ const App: React.FC = () => {
       enableSystem
     >
       <PrivyProvider
-        appId={privyAppId}
+        appId={PRIVY_APP_ID}
         config={{
           loginMethods: ['email', 'wallet'],
           appearance: {
