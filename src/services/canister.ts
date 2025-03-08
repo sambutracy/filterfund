@@ -2,6 +2,7 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { AuthClient } from '@dfinity/auth-client';
+import { config } from '../config';
 
 // Import declarations - only import the IDL factories
 import { idlFactory as campaignIdlFactory } from "../declarations/campaign";
@@ -23,8 +24,6 @@ const CANISTER_IDS = {
   USER: "br5f7-7uaaa-aaaaa-qaaca-cai"
 };
 
-// Set up the host
-const host = "http://localhost:8000";
 
 // Create an auth client
 let authClient: AuthClient | null = null;
@@ -38,29 +37,19 @@ const initAuthClient = async (): Promise<AuthClient> => {
 
 // Create an agent directly with better error handling
 const createAgent = async (): Promise<HttpAgent> => {
-  try {
-    // Import canister config
-    const { icHost } = await import('../canister-config');
-    
-    const agent = new HttpAgent({ host: icHost });
-    
-    // Fetch the root key for development
-    if (process.env.NODE_ENV !== 'production') {
-      try {
-        await agent.fetchRootKey();
-      } catch (e) {
-        console.warn('Unable to fetch root key. Check if your local replica is running');
-        console.error(e);
-      }
+  const agent = new HttpAgent({ host: config.icHost });
+  
+  // Fetch the root key for development
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      await agent.fetchRootKey();
+    } catch (e) {
+      console.warn('Unable to fetch root key. Check if your local replica is running');
+      console.error(e);
     }
-    
-    return agent;
-  } catch (error) {
-    console.error('Error creating agent:', error);
-    // Fallback to localhost
-    const agent = new HttpAgent({ host: 'http://localhost:8000' });
-    return agent;
   }
+  
+  return agent;
 };
 
 // Create actor instances with better error handling

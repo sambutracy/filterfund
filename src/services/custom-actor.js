@@ -1,5 +1,5 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
-import { canisterIds } from '../canister-config';
+import { canisterIds } from '../config';
 import { idlFactory as campaignIdlFactory } from "../declarations/campaign";
 import { idlFactory as assetIdlFactory } from "../declarations/asset";
 import { idlFactory as userIdlFactory } from "../declarations/user";
