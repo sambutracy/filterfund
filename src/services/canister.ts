@@ -36,30 +36,47 @@ const initAuthClient = async (): Promise<AuthClient> => {
   return authClient;
 };
 
-// Create an agent directly without relying on environment variables
+// Create an agent directly with better error handling
 const createAgent = async (): Promise<HttpAgent> => {
-  const agent = new HttpAgent({ host });
-  
-  // Fetch the root key for development
-  if (process.env.NODE_ENV !== 'production') {
-    try {
-      await agent.fetchRootKey();
-    } catch (e) {
-      console.warn('Unable to fetch root key. Check if your local replica is running');
-      console.error(e);
+  try {
+    // Import canister config
+    const { icHost } = await import('../canister-config');
+    
+    const agent = new HttpAgent({ host: icHost });
+    
+    // Fetch the root key for development
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        await agent.fetchRootKey();
+      } catch (e) {
+        console.warn('Unable to fetch root key. Check if your local replica is running');
+        console.error(e);
+      }
     }
+    
+    return agent;
+  } catch (error) {
+    console.error('Error creating agent:', error);
+    // Fallback to localhost
+    const agent = new HttpAgent({ host: 'http://localhost:8000' });
+    return agent;
   }
-  
-  return agent;
 };
 
-// Create actor instances directly with hardcoded canister IDs
+// Create actor instances with better error handling
 const createCampaignActor = async (): Promise<CampaignServiceInterface> => {
-  const agent = await createAgent();
-  return Actor.createActor<CampaignServiceInterface>(campaignIdlFactory, {
-    agent,
-    canisterId: CANISTER_IDS.CAMPAIGN,
-  });
+  try {
+    const agent = await createAgent();
+    const { canisterIds } = await import('../canister-config');
+    
+    return Actor.createActor<CampaignServiceInterface>(campaignIdlFactory, {
+      agent,
+      canisterId: canisterIds.campaign,
+    });
+  } catch (error) {
+    console.error('Error creating campaign actor:', error);
+    throw new Error('Failed to initialize campaign service');
+  }
 };
 
 const createAssetActor = async (): Promise<AssetServiceInterface> => {

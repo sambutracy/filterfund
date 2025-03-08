@@ -8,33 +8,34 @@
     "@dfinity/auth-client": "^2.3.0",
     "@dfinity/principal": "^2.3.0",
     "@privy-io/react-auth": "^2.6.1",
-    "@react-three/drei": "^10.0.4",
-    "@react-three/fiber": "^9.0.4",
+    "@react-three/drei": "^9.61.1",
+    "@react-three/fiber": "^8.0.27",
     "@shadcn/ui": "^0.0.4",
     "@tailwindcss/postcss": "^4.0.9",
-    "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.2.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
-    "@types/node": "^16.18.126",
-    "@types/react": "^19.0.10",
-    "@types/react-dom": "^19.0.4",
-    "framer-motion": "^12.4.10",
-    "next-themes": "^0.4.4",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "react-router-dom": "^7.2.0",
+    "@testing-library/dom": "^9.3.4",
+    "@testing-library/jest-dom": "^6.1.6",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/jest": "^29.5.6",
+    "@types/node": "^20.8.10",
+    "@types/react": "^18.2.33",
+    "@types/react-dom": "^18.2.14",
+    "framer-motion": "^10.16.4",
+    "next-themes": "^0.2.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.17.0",
     "react-scripts": "5.0.1",
     "three": "^0.174.0",
-    "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
+    "typescript": "^4.9.5", 
+    "web-vitals": "^3.5.0"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "setup-dev": "bash deploy-dev.sh"
   },
   "eslintConfig": {
     "extends": [
@@ -55,8 +56,11 @@
     ]
   },
   "devDependencies": {
-    "autoprefixer": "^10.4.20",
+    "autoprefixer": "^10.4.16",
+    "dotenv-webpack": "^8.0.1",
+    "html-webpack-plugin": "^5.5.3",
     "postcss": "^8.4.31",
-    "tailwindcss": "^3.2.7"
+    "tailwindcss": "^3.3.3",
+    "webpack": "^5.89.0"
   }
 }

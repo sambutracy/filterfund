@@ -19,28 +19,31 @@ const CampaignList: React.FC = () => {
   }, []);
 
   return (
-    <><motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="campaign-list"
-    >
-      {campaigns.map(campaign => (
-        <motion.div
-          key={campaign.id}
-          className="campaign-card"
-          whileHover={{ scale: 1.05 }}
-        >
-          <h3>{campaign.title}</h3>
-          <p>{campaign.description}</p>
-        </motion.div>
-      ))}
-    </motion.div><div>
+    <div className="campaign-list-container">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="campaign-list"
+      >
+        {campaigns.map(campaign => (
+          <motion.div
+            key={campaign.id}
+            className="campaign-card"
+            whileHover={{ scale: 1.05 }}
+          >
+            <h3>{campaign.title}</h3>
+            <p>{campaign.description}</p>
+          </motion.div>
+        ))}
+      </motion.div>
+      
+      <div>
         <h2>Active Campaigns</h2>
         {campaigns.length > 0 ? (
           campaigns.map(campaign => (
             <div key={campaign.id} className="campaign-item">
-              <div key={campaign.id} className="campaign-item-content">
+              <div className="campaign-item-content">
                 <h3>{campaign.title}</h3>
                 <p>{campaign.description}</p>
                 {/* Future: Add buttons for "Try Filter", "Donate", etc. */}
@@ -50,7 +53,8 @@ const CampaignList: React.FC = () => {
         ) : (
           <p>No campaigns available yet.</p>
         )}
-      </div></>
+      </div>
+    </div>
   );
 };
 
