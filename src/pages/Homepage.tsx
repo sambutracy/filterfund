@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import DisplayCampaigns from '../components/DisplayCampaigns';
 import FilterGrid from '../components/FilterGrid';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { useStateContext } from '../context';
+import { } from '../context';
 // Import from our canister services
 import { Campaign } from '../services/canister';
 import { Filter } from '../services/api';
@@ -17,7 +17,6 @@ const HomePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('campaigns'); // 'campaigns' or 'filters'
   const [error, setError] = useState<string | null>(null);
   
-  const { address } = useStateContext();
 
   // Use useCallback to prevent unnecessary re-renders
   const fetchCampaigns = useCallback(async () => {

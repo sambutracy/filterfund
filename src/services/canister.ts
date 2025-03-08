@@ -2,6 +2,7 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { AuthClient } from '@dfinity/auth-client';
+import { config } from '../config';
 
 // Import declarations - only import the IDL factories
 import { idlFactory as campaignIdlFactory } from "../declarations/campaign";
@@ -23,8 +24,6 @@ const CANISTER_IDS = {
   USER: "br5f7-7uaaa-aaaaa-qaaca-cai"
 };
 
-// Set up the host
-const host = "http://localhost:8000";
 
 // Create an auth client
 let authClient: AuthClient | null = null;
@@ -38,7 +37,7 @@ const initAuthClient = async (): Promise<AuthClient> => {
 
 // Create an agent directly without relying on environment variables
 const createAgent = async (): Promise<HttpAgent> => {
-  const agent = new HttpAgent({ host });
+  const agent = new HttpAgent({ host: config.icHost });
   
   // Fetch the root key for development
   if (process.env.NODE_ENV !== 'production') {
