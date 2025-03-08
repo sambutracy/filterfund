@@ -297,6 +297,8 @@ const CreateCampaign: React.FC = () => {
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
                 value={form.deadline}
                 onChange={(e) => handleFormFieldChange('deadline', e)}
+                title="Campaign end date"
+                placeholder="Select end date"
               />
             </div>
           </div>
@@ -311,6 +313,8 @@ const CreateCampaign: React.FC = () => {
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
                 value={form.category}
                 onChange={(e) => handleFormFieldChange('category', e)}
+                title="Campaign category"
+                aria-label="Campaign category"
               >
                 {CauseCategories.map((category) => (
                   <option key={category} value={category}>
@@ -330,6 +334,8 @@ const CreateCampaign: React.FC = () => {
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
                 value={form.filterPlatform}
                 onChange={(e) => handleFormFieldChange('filterPlatform', e)}
+                title="Filter platform"
+                aria-label="Filter platform"
               >
                 {FilterPlatforms.map((platform) => (
                   <option key={platform} value={platform}>

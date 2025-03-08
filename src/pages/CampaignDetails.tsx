@@ -214,8 +214,8 @@ const CampaignDetails: React.FC = () => {
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
-                    <div 
-                      className="bg-gradient-to-r from-orange-500 to-lime-500 h-4 rounded-full"
+                  <div 
+                      className={`progress-bar`}
                       style={{ width: `${calculateProgress()}%` }}
                     ></div>
                   </div>

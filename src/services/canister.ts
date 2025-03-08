@@ -1,8 +1,6 @@
-// src/services/canister.ts - simplified version without name conflicts
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
-import { AuthClient } from '@dfinity/auth-client';
-import { config } from '../config';
+import { canisterIds, networks, icHost } from '../canister-config';
 
 // Import declarations - only import the IDL factories
 import { idlFactory as campaignIdlFactory } from "../declarations/campaign";
@@ -17,27 +15,36 @@ import type { _SERVICE as UserServiceInterface, UserProfile } from "../declarati
 // Re-export types
 export type { Campaign, CauseCategory, Donation, FilterDetails, AssetType, UserProfile };
 
-// Hardcoded canister IDs for when environment variables are not available
-const CANISTER_IDS = {
+// Hardcoded canister IDs for absolute fallback
+const FALLBACK_CANISTER_IDS = {
   ASSET: "bkyz2-fmaaa-aaaaa-qaaaq-cai",
   CAMPAIGN: "be2us-64aaa-aaaaa-qaabq-cai",
   USER: "br5f7-7uaaa-aaaaa-qaaca-cai"
 };
 
-
-// Create an auth client
-let authClient: AuthClient | null = null;
-
-const initAuthClient = async (): Promise<AuthClient> => {
-  if (!authClient) {
-    authClient = await AuthClient.create();
-  }
-  return authClient;
+// Logging function for debugging
+const logCanisterConfig = () => {
+  console.log('Canister Configuration:', {
+    campaignCanisterId: canisterIds.campaign,
+    assetCanisterId: canisterIds.asset,
+    userCanisterId: canisterIds.user,
+    icHost: icHost,
+    nodeEnv: process.env.NODE_ENV
+  });
 };
 
 // Create an agent directly with better error handling
 const createAgent = async (): Promise<HttpAgent> => {
-  const agent = new HttpAgent({ host: config.icHost });
+  // Log configuration before creating agent
+  logCanisterConfig();
+
+  const host = process.env.NODE_ENV === 'production' 
+    ? networks.mainnet 
+    : icHost;
+
+  console.log(`Creating agent with host: ${host}`);
+
+  const agent = new HttpAgent({ host });
   
   // Fetch the root key for development
   if (process.env.NODE_ENV !== 'production') {
@@ -56,11 +63,19 @@ const createAgent = async (): Promise<HttpAgent> => {
 const createCampaignActor = async (): Promise<CampaignServiceInterface> => {
   try {
     const agent = await createAgent();
-    const { canisterIds } = await import('../canister-config');
     
+    // Additional logging for campaign actor creation
+    console.log('Campaign Canister ID:', canisterIds.campaign || FALLBACK_CANISTER_IDS.CAMPAIGN);
+
+    const canisterId = canisterIds.campaign || FALLBACK_CANISTER_IDS.CAMPAIGN;
+    
+    if (!canisterId) {
+      throw new Error('No campaign canister ID found');
+    }
+
     return Actor.createActor<CampaignServiceInterface>(campaignIdlFactory, {
       agent,
-      canisterId: canisterIds.campaign,
+      canisterId: canisterId,
     });
   } catch (error) {
     console.error('Error creating campaign actor:', error);
@@ -69,19 +84,43 @@ const createCampaignActor = async (): Promise<CampaignServiceInterface> => {
 };
 
 const createAssetActor = async (): Promise<AssetServiceInterface> => {
-  const agent = await createAgent();
-  return Actor.createActor<AssetServiceInterface>(assetIdlFactory, {
-    agent,
-    canisterId: CANISTER_IDS.ASSET,
-  });
+  try {
+    const agent = await createAgent();
+    
+    const canisterId = canisterIds.asset || FALLBACK_CANISTER_IDS.ASSET;
+    
+    if (!canisterId) {
+      throw new Error('No asset canister ID found');
+    }
+
+    return Actor.createActor<AssetServiceInterface>(assetIdlFactory, {
+      agent,
+      canisterId: canisterId,
+    });
+  } catch (error) {
+    console.error('Error creating asset actor:', error);
+    throw error;
+  }
 };
 
 const createUserActor = async (): Promise<UserServiceInterface> => {
-  const agent = await createAgent();
-  return Actor.createActor<UserServiceInterface>(userIdlFactory, {
-    agent,
-    canisterId: CANISTER_IDS.USER,
-  });
+  try {
+    const agent = await createAgent();
+    
+    const canisterId = canisterIds.user || FALLBACK_CANISTER_IDS.USER;
+    
+    if (!canisterId) {
+      throw new Error('No user canister ID found');
+    }
+
+    return Actor.createActor<UserServiceInterface>(userIdlFactory, {
+      agent,
+      canisterId: canisterId,
+    });
+  } catch (error) {
+    console.error('Error creating user actor:', error);
+    throw error;
+  }
 };
 
 // User-related methods
@@ -159,7 +198,6 @@ export const uploadAsset = async (
 ): Promise<string | Error> => {
   try {
     const assetActor = await createAssetActor();
-    const fileArrayBuffer = await file.arrayBuffer();
     
     // Create an asset type variant
     const assetTypeObj: Record<string, null> = {};
@@ -185,8 +223,7 @@ export const uploadAsset = async (
     while (offset < fileSize) {
       const end = Math.min(offset + chunkSize, fileSize);
       const chunk = file.slice(offset, end);
-      const chunkArrayBuffer = await chunk.arrayBuffer();
-      const uint8Array = new Uint8Array(chunkArrayBuffer);
+      const uint8Array = new Uint8Array(await chunk.arrayBuffer());
       
       // Upload the chunk
       const chunkResult = await assetActor.uploadChunk(
