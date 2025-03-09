@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CanisterService } from '../services/canister';
+import './CampaignList.css';
 
 // Import ICP-specific types
 import type { Campaign as ICPCampaign } from '../services/canister';
@@ -94,18 +95,18 @@ const CampaignList: React.FC = () => {
                   <div className="campaign-card">
                     <h3>{campaign.title}</h3>
                     <p>{campaign.description}</p>
-                    {campaign.mainImage && (
-                      <img 
-                        src={campaign.mainImage} 
-                        alt={campaign.title}
-                        className="w-full h-48 object-cover rounded-md mt-4"
-                      />
-                    )}
-                                        <div 
-                      className="bg-gradient-to-r from-orange-500 to-lime-500 h-2 rounded-full progress-bar"
-                      style={{ '--progress-width': `${Math.min(100, Number(campaign.amountCollected || 0) * 100 / Number(campaign.target || 1))}%` } as React.CSSProperties}
-                    ></div>
-                  </div>
+                      {campaign.mainImage && (
+                        <><img
+                          src={campaign.mainImage}
+                          alt={campaign.title}
+                          className="w-full h-48 object-cover rounded-md mt-4" /><div className="progress-bar-container">
+                            <div
+                              className="progress-bar"
+                              data-progress={Math.min(100, Math.round(Number(campaign.amountCollected || 0) * 100 / Number(campaign.target || 1)))}
+                            ></div>
+                          </div></>
+                      )}
+                    </div>
                 </motion.div>
               ))}
             </div>

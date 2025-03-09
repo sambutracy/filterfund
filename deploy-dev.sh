@@ -27,7 +27,7 @@ cat > .env.local << EOL
 CANISTER_ID_CAMPAIGN=$(dfx canister id campaign)
 CANISTER_ID_ASSET=$(dfx canister id asset)
 CANISTER_ID_USER=$(dfx canister id user)
-REACT_APP_PRIVY_APP_ID=your_privy_app_id
+REACT_APP_PRIVY_APP_ID=cm7x0zd4401hgnd3c43e9kfpr
 EOL
 
 echo "Deployment complete!"
