@@ -4,9 +4,19 @@ import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { CanisterService } from "../services/canister";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { usePrivy } from '@privy-io/react-auth';
+import Notification from "../components/Notification";
 
-console.log("Form submission started");
-console.log("Canister IDs being used:", {
+// Configure logging for debugging
+const ENABLE_DEBUG_LOGGING = true;
+const logDebug = (...args: any[]) => {
+  if (ENABLE_DEBUG_LOGGING) {
+    console.log('[CreateCampaign]', ...args);
+  }
+};
+
+// Log canister IDs for debugging
+logDebug("Canister IDs being used:", {
   asset: CanisterService.getCanisterId("ASSET"),
   campaign: CanisterService.getCanisterId("CAMPAIGN"),
   user: CanisterService.getCanisterId("USER"),
@@ -33,9 +43,11 @@ const FilterPlatforms = [
 
 const CreateCampaign: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = usePrivy();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [notificationVisible, setNotificationVisible] = useState(false);
 
   // File references
   const mainImageFileRef = useRef<HTMLInputElement>(null);
@@ -43,7 +55,7 @@ const CreateCampaign: React.FC = () => {
 
   // Form state
   const [form, setForm] = useState({
-    creatorName: "",
+    creatorName: user?.email?.address || "",
     title: "",
     description: "",
     target: "",
@@ -106,51 +118,50 @@ const CreateCampaign: React.FC = () => {
     setError(null);
     setSuccessMessage(null);
 
-    // Modify the handleSubmit function to skip actual uploads
-    let mainImageUrl = form.mainImage;
-    if (form.mainImageFile) {
-      // For testing, use the preview URL directly instead of uploading
-      mainImageUrl = form.mainImagePreview;
-      console.log("Using preview URL instead of uploading:", mainImageUrl);
-    }
-
-    // Before image upload
     try {
-      // Upload main image if not already set for testing
-      if (form.mainImageFile && mainImageUrl === form.mainImage) {
-        if (form.mainImageFile) {
+      // Step 1: Upload main image if provided
+      let mainImageUrl = form.mainImage;
+      if (form.mainImageFile) {
+        logDebug("Uploading main image");
+        try {
           const result = await CanisterService.uploadAsset(
             form.mainImageFile,
             "MainImage"
           );
           if (typeof result === "string") {
             mainImageUrl = result;
+            logDebug("Main image uploaded successfully:", mainImageUrl);
           } else {
             throw new Error("Failed to upload main image");
           }
+        } catch (err) {
+          logDebug("Main image upload failed:", err);
+          throw new Error("Failed to upload main image. Please try again or provide an image URL instead.");
         }
       }
-      // After image upload
-      console.log("Main image upload result:", mainImageUrl);
 
-      // Upload filter image
+      // Step 2: Upload filter image if provided
       let filterImageUrl = form.filterImage;
       if (form.filterImageFile) {
-        const result = await CanisterService.uploadAsset(
-          form.filterImageFile,
-          "FilterImage"
-        );
-        if (typeof result === "string") {
-          filterImageUrl = result;
-        } else {
-          throw new Error("Failed to upload filter image");
+        logDebug("Uploading filter image");
+        try {
+          const result = await CanisterService.uploadAsset(
+            form.filterImageFile,
+            "FilterImage"
+          );
+          if (typeof result === "string") {
+            filterImageUrl = result;
+            logDebug("Filter image uploaded successfully:", filterImageUrl);
+          } else {
+            throw new Error("Failed to upload filter image");
+          }
+        } catch (err) {
+          logDebug("Filter image upload failed:", err);
+          throw new Error("Failed to upload filter image. Please try again or provide an image URL instead.");
         }
       }
 
-      // Convert deadline to Date object
-      const deadlineDate = new Date(form.deadline);
-
-      // Create campaign
+      // Step 3: Create filter details
       const filterDetails = {
         platform: form.filterPlatform,
         filterUrl: form.filterUrl,
@@ -159,11 +170,24 @@ const CreateCampaign: React.FC = () => {
         instructions: form.filterInstructions,
       };
 
+      // Step 4: Create campaign
+      logDebug("Creating campaign with details:", {
+        title: form.title,
+        description: form.description,
+        target: Number(form.target),
+        deadline: new Date(form.deadline),
+        mainImageUrl,
+        filterImageUrl,
+        creatorName: form.creatorName,
+        category: form.category,
+        filterDetails,
+      });
+
       const result = await CanisterService.createCampaign(
         form.title,
         form.description,
         Number(form.target),
-        deadlineDate,
+        new Date(form.deadline),
         mainImageUrl,
         filterImageUrl,
         form.creatorName,
@@ -173,9 +197,12 @@ const CreateCampaign: React.FC = () => {
 
       if (typeof result === "bigint") {
         const campaignId = result.toString();
+        logDebug("Campaign created successfully with ID:", campaignId);
+        
         setSuccessMessage(
           `Campaign created successfully! Redirecting to campaign page...`
         );
+        setNotificationVisible(true);
 
         // Navigate to the campaign details page after a short delay
         setTimeout(() => {
@@ -191,6 +218,7 @@ const CreateCampaign: React.FC = () => {
           ? error.message
           : "Failed to create campaign. Please try again."
       );
+      setNotificationVisible(true);
     } finally {
       setIsLoading(false);
     }
@@ -200,16 +228,19 @@ const CreateCampaign: React.FC = () => {
   const validateForm = (): boolean => {
     if (!form.creatorName) {
       setError("Please enter your name");
+      setNotificationVisible(true);
       return false;
     }
 
     if (!form.title) {
       setError("Please enter a campaign title");
+      setNotificationVisible(true);
       return false;
     }
 
     if (!form.description) {
       setError("Please enter a campaign description");
+      setNotificationVisible(true);
       return false;
     }
 
@@ -219,27 +250,32 @@ const CreateCampaign: React.FC = () => {
       Number(form.target) <= 0
     ) {
       setError("Please enter a valid funding target");
+      setNotificationVisible(true);
       return false;
     }
 
     if (!form.deadline) {
       setError("Please select an end date");
+      setNotificationVisible(true);
       return false;
     }
 
     const deadlineDate = new Date(form.deadline);
     if (deadlineDate <= new Date()) {
       setError("End date must be in the future");
+      setNotificationVisible(true);
       return false;
     }
 
     if (!form.mainImage && !form.mainImageFile) {
       setError("Please provide a main campaign image");
+      setNotificationVisible(true);
       return false;
     }
 
     if (!form.filterUrl) {
       setError("Please enter the filter URL");
+      setNotificationVisible(true);
       return false;
     }
 
@@ -257,19 +293,13 @@ const CreateCampaign: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* Success message */}
-      {successMessage && (
-        <div className="bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 p-4 rounded-lg mb-6">
-          {successMessage}
-        </div>
-      )}
-
-      {/* Error message */}
-      {error && (
-        <div className="bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 p-4 rounded-lg mb-6">
-          {error}
-        </div>
-      )}
+      {/* Notification component */}
+      <Notification
+        message={error || successMessage || ""}
+        type={error ? "error" : "success"}
+        isVisible={notificationVisible}
+        onClose={() => setNotificationVisible(false)}
+      />
 
       <form
         onSubmit={handleSubmit}
@@ -544,18 +574,18 @@ const CreateCampaign: React.FC = () => {
                 />
               </label>
 
-              <div className="ml-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+              <div className="ml-4 text-center text-gray-500 dark:text-gray-400 text-sm mt-2">
                 or provide a URL:
               </div>
-            </div>
 
-            <input
-              type="text"
-              className="w-full mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-              placeholder="https://example.com/qrcode.jpg"
-              value={form.filterImage}
-              onChange={(e) => handleFormFieldChange("filterImage", e)}
-            />
+              <input
+                type="text"
+                className="w-full mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
+                placeholder="https://example.com/qrcode.jpg"
+                value={form.filterImage}
+                onChange={(e) => handleFormFieldChange("filterImage", e)}
+              />
+            </div>
           </div>
         </div>
 

@@ -1,9 +1,11 @@
+// src/pages/CampaignDetails.tsx - Fix for the TypeScript errors
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { CanisterService, Campaign } from '../services/canister';
+import { CanisterService, Campaign, Donation } from '../services/canister';
+import { Principal } from '@dfinity/principal';
 
 const CampaignDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -214,8 +216,8 @@ const CampaignDetails: React.FC = () => {
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
-                  <div 
-                      className={`progress-bar`}
+                    <div 
+                      className="bg-lime-500 rounded-full h-4"
                       style={{ width: `${calculateProgress()}%` }}
                     ></div>
                   </div>
@@ -264,7 +266,7 @@ const CampaignDetails: React.FC = () => {
                     <p className="text-gray-600 dark:text-gray-300">No donations yet. Be the first to donate!</p>
                   ) : (
                     <div className="space-y-4">
-                      {campaign.donations.slice(0, 5).map((donation, index) => (
+                      {campaign.donations.slice(0, 5).map((donation: Donation, index: number) => (
                         <div key={index} className="border-b border-gray-200 dark:border-gray-700 pb-4">
                           <div className="flex justify-between">
                             <span className="font-medium">

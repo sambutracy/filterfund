@@ -1,30 +1,147 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
-import DisplayCampaigns from '../components/DisplayCampaigns';
-import FilterGrid from '../components/FilterGrid';
+import { Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { } from '../context';
-// Import from our canister services
 import { Campaign } from '../services/canister';
 import { Filter } from '../services/api';
 import { CanisterService } from '../services/canister';
 
+// Configure logging for debugging
+const ENABLE_DEBUG_LOGGING = true;
+const logDebug = (...args: any[]) => {
+  if (ENABLE_DEBUG_LOGGING) {
+    console.log('[Homepage]', ...args);
+  }
+};
+
+// Campaign card component for homepage
+const CampaignCard: React.FC<{campaign: Campaign}> = ({ campaign }) => {
+  const calculateProgress = (): number => {
+    const target = Number(campaign.target);
+    const collected = Number(campaign.amountCollected);
+    
+    if (target === 0) return 0;
+    return Math.min(Math.round((collected / target) * 100), 100);
+  };
+
+  const formatDate = (timestamp: bigint): string => {
+    const milliseconds = Number(timestamp) / 1_000_000; // Convert nanoseconds to milliseconds
+    return new Date(milliseconds).toLocaleDateString();
+  };
+
+  const progress = calculateProgress();
+  
+  return (
+    <motion.div 
+      whileHover={{ y: -5 }}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden"
+    >
+      <img 
+        src={campaign.mainImage || "/placeholder-campaign.jpg"} 
+        alt={campaign.title}
+        className="w-full h-48 object-cover"
+      />
+      
+      <div className="p-5">
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          {campaign.title}
+        </h3>
+        
+        <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+          {campaign.description}
+        </p>
+        
+        <div className="mb-4">
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-gray-500 dark:text-gray-400">Progress</span>
+            <span className="font-medium text-lime-600 dark:text-lime-400">{progress}%</span>
+          </div>
+          
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div 
+              className="bg-lime-500 h-2 rounded-full" 
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+        </div>
+        
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            <div>Target: {Number(campaign.target).toLocaleString()} ICP</div>
+            <div>Ends: {formatDate(campaign.deadline)}</div>
+          </div>
+          
+          <Link to={`/campaign/${campaign.id.toString()}`}>
+            <button className="bg-gradient-to-r from-orange-500 to-lime-500 hover:from-orange-600 hover:to-lime-600 text-white px-4 py-2 rounded-lg text-sm">
+              View Details
+            </button>
+          </Link>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Filter card component for homepage
+const FilterCard: React.FC<{filter: Filter}> = ({ filter }) => {
+  return (
+    <motion.div 
+      whileHover={{ y: -5 }}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden"
+    >
+      <div className="relative">
+        <img 
+          src={filter.image || "/placeholder-filter.jpg"} 
+          alt={filter.title}
+          className="w-full h-48 object-cover"
+        />
+        <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs px-2 py-1 rounded-full">
+          {filter.platform}
+        </div>
+      </div>
+      
+      <div className="p-5">
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          {filter.title}
+        </h3>
+        
+        <p className="text-gray-600 dark:text-gray-300 mb-4">
+          by {filter.creator}
+        </p>
+        
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-medium px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded">
+            {filter.category}
+          </span>
+          
+          <a href={filter.filterUrl} target="_blank" rel="noopener noreferrer">
+            <button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg text-sm">
+              Try Filter
+            </button>
+          </a>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 const HomePage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [filters, setFilters] = useState<Filter[]>([]);
   const [activeTab, setActiveTab] = useState('campaigns'); // 'campaigns' or 'filters'
   const [error, setError] = useState<string | null>(null);
   
-
   // Use useCallback to prevent unnecessary re-renders
   const fetchCampaigns = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Use our CanisterService directly for better IC integration
+      logDebug("Fetching campaigns from canister");
+      // Use our CanisterService directly
       const data = await CanisterService.getAllCampaigns();
+      logDebug(`Retrieved ${data.length} campaigns`);
       setCampaigns(data);
     } catch (error) {
       console.error("Error fetching campaigns:", error);
@@ -38,8 +155,8 @@ const HomePage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // For now we still use our mock API for filters
-      // In the future, this would be integrated with IC as well
+      logDebug("Fetching filters (based on top campaigns)");
+      // For filters, we'll use the top campaigns and convert them to filter format
       const data = await CanisterService.getTopCampaigns(10);
       
       // Map campaigns to filters format for display
@@ -48,12 +165,13 @@ const HomePage: React.FC = () => {
         title: campaign.title,
         image: campaign.mainImage,
         filterUrl: campaign.filter.filterUrl,
-        category: getCategoryName(campaign.category),
+        category: CanisterService.categoryToString(campaign.category),
         creator: campaign.creatorName,
         platform: campaign.filter.platform,
         instructions: campaign.filter.instructions
       }));
       
+      logDebug(`Converted ${filtersFromCampaigns.length} campaigns to filters`);
       setFilters(filtersFromCampaigns);
     } catch (error) {
       console.error("Error fetching filters:", error);
@@ -63,19 +181,6 @@ const HomePage: React.FC = () => {
     }
   }, []);
 
-  // Helper function to get category name from CauseCategory variant
-  const getCategoryName = (category: any): string => {
-    // Detect which variant is present
-    if ('Health' in category) return 'Health';
-    if ('Education' in category) return 'Education';
-    if ('Environment' in category) return 'Environment';
-    if ('Equality' in category) return 'Equality';
-    if ('Poverty' in category) return 'Poverty';
-    if ('HumanRights' in category) return 'Human Rights';
-    if ('AnimalWelfare' in category) return 'Animal Welfare';
-    return 'Other';
-  };
-
   // Fetch data based on active tab
   useEffect(() => {
     if (activeTab === 'campaigns') {
@@ -84,20 +189,6 @@ const HomePage: React.FC = () => {
       fetchFilters();
     }
   }, [activeTab, fetchCampaigns, fetchFilters]);
-
-  // Map Campaign to the format expected by DisplayCampaigns
-  const mapCampaignsToDisplay = (campaigns: Campaign[]) => {
-    return campaigns.map(campaign => ({
-      id: campaign.id.toString(),
-      title: campaign.title,
-      description: campaign.description,
-      target: Number(campaign.target),
-      deadline: Number(campaign.deadline),
-      amountCollected: Number(campaign.amountCollected),
-      image: campaign.mainImage,
-      creator: campaign.creatorName
-    }));
-  };
 
   return (
     <Layout>
@@ -146,53 +237,76 @@ const HomePage: React.FC = () => {
         {isLoading && (
           <div className="flex justify-center my-12">
             <LoadingSpinner />
+            <span className="ml-3">Loading...</span>
           </div>
         )}
         
-        {/* Content based on active tab */}
+        {/* Campaigns Tab Content */}
         {!isLoading && activeTab === 'campaigns' && (
-          <DisplayCampaigns 
-            title="All Campaigns"
-            isLoading={false}
-            campaigns={mapCampaignsToDisplay(campaigns)}
-          />
-        )}
-        
-        {!isLoading && activeTab === 'filters' && (
           <>
-            <h1 className="text-3xl font-bold text-orange-600 dark:text-orange-400 mb-6">
-              AR Filters Marketplace
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300 mb-8">
-              Browse and try AR filters created for social impact campaigns. Use these filters to spread awareness and support causes you care about.
-            </p>
-            <FilterGrid 
-              filters={filters} 
-              isLoading={false} 
-            />
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                Active Campaigns
+              </h2>
+              <Link to="/create-campaign">
+                <button className="bg-gradient-to-r from-orange-500 to-lime-500 hover:from-orange-600 hover:to-lime-600 text-white px-6 py-2 rounded-lg shadow-md">
+                  Create Campaign
+                </button>
+              </Link>
+            </div>
+            
+            {campaigns.length === 0 ? (
+              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                <h3 className="text-xl font-semibold mb-4">No Campaigns Available Yet</h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  Be the first to create a campaign for a cause you care about!
+                </p>
+                <Link to="/create-campaign">
+                  <button className="bg-gradient-to-r from-orange-500 to-lime-500 hover:from-orange-600 hover:to-lime-600 text-white px-6 py-3 rounded-lg transform transition hover:scale-105">
+                    Create Campaign
+                  </button>
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {campaigns.map((campaign) => (
+                  <CampaignCard key={campaign.id.toString()} campaign={campaign} />
+                ))}
+              </div>
+            )}
           </>
         )}
         
-        {/* No Data Message */}
-        {!isLoading && activeTab === 'campaigns' && campaigns.length === 0 && (
-          <div className="text-center py-12">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="bg-gray-100 dark:bg-gray-800 p-8 rounded-lg shadow-lg"
-            >
-              <h3 className="text-xl font-semibold mb-4">No Campaigns Available Yet</h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6">
-                Be the first to create a campaign for a cause you care about!
-              </p>
-              <button
-                onClick={() => window.location.href = '/create-campaign'}
-                className="bg-gradient-to-r from-orange-500 to-lime-500 hover:from-orange-600 hover:to-lime-600 text-white px-6 py-3 rounded-lg transform transition hover:scale-105"
-              >
-                Create Campaign
-              </button>
-            </motion.div>
-          </div>
+        {/* Filters Tab Content */}
+        {!isLoading && activeTab === 'filters' && (
+          <>
+            <h2 className="text-2xl font-bold text-orange-600 dark:text-orange-400 mb-6">
+              AR Filters Marketplace
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-8">
+              Browse and try AR filters created for social impact campaigns. Use these filters to spread awareness and support causes you care about.
+            </p>
+            
+            {filters.length === 0 ? (
+              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                <h3 className="text-xl font-semibold mb-4">No Filters Available Yet</h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  Filters will appear here as campaigns are created.
+                </p>
+                <Link to="/create-campaign">
+                  <button className="bg-gradient-to-r from-orange-500 to-lime-500 hover:from-orange-600 hover:to-lime-600 text-white px-6 py-3 rounded-lg transform transition hover:scale-105">
+                    Create Campaign with Filter
+                  </button>
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filters.map((filter) => (
+                  <FilterCard key={filter.id} filter={filter} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </motion.div>
     </Layout>

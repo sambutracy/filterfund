@@ -1,4 +1,4 @@
-// src/services/canister.ts - updated to use centralized config
+// src/services/canister.ts - Fixed imports and type handling
 import { Actor, HttpAgent } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { AuthClient } from '@dfinity/auth-client';
@@ -6,18 +6,111 @@ import { AuthClient } from '@dfinity/auth-client';
 // Import centralized environment config
 import { config } from '../config/env';
 
-// Import declarations - only import the IDL factories
+// Import declarations without direct type imports that cause issues
 import { idlFactory as campaignIdlFactory } from "../declarations/campaign";
 import { idlFactory as assetIdlFactory } from "../declarations/asset";
 import { idlFactory as userIdlFactory } from "../declarations/user";
 
-// Import types with renamed interfaces to avoid conflicts
-import type { _SERVICE as CampaignServiceInterface, Campaign, CauseCategory, Donation, FilterDetails } from "../declarations/campaign/campaign.did.d";
-import type { _SERVICE as AssetServiceInterface, AssetType } from "../declarations/asset/asset.did.d";
-import type { _SERVICE as UserServiceInterface, UserProfile } from "../declarations/user/user.did.d";
+// Define the interfaces directly to avoid declaration import issues
+// These match the structure from the .did.d.ts files but avoid import issues
+export interface Campaign {
+  id: bigint;
+  title: string;
+  created: bigint;
+  creator: Principal;
+  amountCollected: bigint;
+  description: string;
+  deadline: bigint;
+  filterImage: string;
+  creatorName: string;
+  isActive: boolean;
+  filter: FilterDetails;
+  target: bigint;
+  category: CauseCategory;
+  mainImage: string;
+  donations: Donation[];
+}
 
-// Re-export types
-export type { Campaign, CauseCategory, Donation, FilterDetails, AssetType, UserProfile };
+export interface Donation {
+  isAnonymous: boolean;
+  message: string[] | [];
+  timestamp: bigint;
+  amount: bigint;
+  donor: Principal;
+}
+
+export interface FilterDetails {
+  previewImage: string;
+  filterType: string;
+  platform: string;
+  instructions: string;
+  filterUrl: string;
+}
+
+export type CauseCategory = 
+  { Health: null } |
+  { Environment: null } |
+  { Poverty: null } |
+  { Equality: null } |
+  { AnimalWelfare: null } |
+  { Other: null } |
+  { Education: null } |
+  { HumanRights: null };
+
+export type AssetType = 
+  { FilterImage: null } |
+  { MainImage: null } |
+  { Other: null };
+
+export interface UserProfile {
+  principal: Principal;
+  username: string;
+  email: string;
+  bio: string[] | [];
+  avatarUrl: string[] | [];
+  socialLinks: string[];
+  created: bigint;
+  totalDonations: bigint;
+  campaignsCreated: bigint;
+}
+
+// Define service interfaces
+interface CampaignServiceInterface {
+  createCampaign: (request: any) => Promise<{ ok: bigint } | { err: string }>;
+  donateToCampaign: (campaignId: bigint, amount: bigint, message: string[] | [], isAnonymous: boolean) => Promise<{ ok: null } | { err: string }>;
+  getActiveCampaigns: () => Promise<Campaign[]>;
+  getAllCampaigns: () => Promise<Campaign[]>;
+  getCampaign: (id: bigint) => Promise<Campaign[]>;
+  getCampaignCount: () => Promise<bigint>;
+  getCampaignDonors: (campaignId: bigint) => Promise<Principal[]>;
+  getCampaignsByCategory: (category: CauseCategory) => Promise<Campaign[]>;
+  getMyCampaigns: () => Promise<Campaign[]>;
+  getRecentCampaigns: (limit: bigint) => Promise<Campaign[]>;
+  getTopCampaigns: (limit: bigint) => Promise<Campaign[]>;
+  updateCampaignStatus: (campaignId: bigint, isActive: boolean) => Promise<{ ok: null } | { err: string }>;
+}
+
+interface AssetServiceInterface {
+  acceptCycles: () => Promise<void>;
+  deleteAsset: (assetId: string) => Promise<{ ok: null } | { err: string }>;
+  finishAssetUpload: (assetId: string) => Promise<{ ok: string } | { err: string }>;
+  getAssetInfo: (assetId: string) => Promise<any>;
+  getMyAssets: () => Promise<any[]>;
+  startAssetUpload: (filename: string, contentType: string, assetType: AssetType) => Promise<{ ok: string } | { err: string }>;
+  uploadChunk: (assetId: string, data: number[]) => Promise<{ ok: bigint } | { err: string }>;
+}
+
+interface UserServiceInterface {
+  deleteUser: () => Promise<{ ok: null } | { err: string }>;
+  getAllUsers: () => Promise<UserProfile[]>;
+  getUserCount: () => Promise<bigint>;
+  getUserProfile: (principal: Principal) => Promise<UserProfile[]>;
+  getUserProfileByUsername: (username: string) => Promise<UserProfile[]>;
+  registerUser: (username: string, email: string, bio: string[] | [], avatarUrl: string[] | [], socialLinks: string[]) => Promise<{ ok: Principal } | { err: string }>;
+  searchUsers: (term: string) => Promise<UserProfile[]>;
+  updateUserProfile: (username: string[] | [], email: string[] | [], bio: string[] | [], avatarUrl: string[] | [], socialLinks: string[][] | []) => Promise<{ ok: null } | { err: string }>;
+  updateUserStats: (incrementDonations: bigint[] | [], incrementCampaigns: bigint[] | []) => Promise<{ ok: null } | { err: string }>;
+}
 
 // Set up the host from centralized config
 const host = config.icHost;
@@ -28,6 +121,9 @@ const CANISTER_IDS = {
   CAMPAIGN: config.canisterIds.CAMPAIGN,
   USER: config.canisterIds.USER
 };
+
+// Log the canister IDs for debugging
+console.log("CanisterService initialized with IDs:", CANISTER_IDS);
 
 // Create an auth client
 let authClient: AuthClient | null = null;
@@ -116,7 +212,7 @@ export const getUserProfile = async (principal: Principal): Promise<UserProfile 
     const result = await userActor.getUserProfile(principal);
     
     if (result.length > 0) {
-      return result[0] as UserProfile;
+      return result[0];
     }
     return null;
   } catch (error) {
@@ -150,6 +246,7 @@ export const updateUserProfile = async (
 };
 
 // Asset-related methods
+// Updated upload function with proper error handling
 export const uploadAsset = async (
   file: File,
   assetType: 'MainImage' | 'FilterImage' | 'Other'
@@ -161,6 +258,35 @@ export const uploadAsset = async (
     const assetTypeObj: Record<string, null> = {};
     assetTypeObj[assetType] = null;
     
+    // Read the file as a blob
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    console.log(`Uploading asset: ${file.name}, size: ${file.size}, type: ${file.type}, assetType: ${assetType}`);
+    
+    // First try the simplified method if it exists
+    if ('uploadAssetSimple' in assetActor) {
+      try {
+        const result = await (assetActor as any).uploadAssetSimple(
+          file.name,
+          file.type,
+          Array.from(uint8Array),
+          assetTypeObj as unknown as AssetType
+        );
+        
+        if ('err' in result) {
+          throw new Error(result.err);
+        }
+        
+        console.log(`Upload successful: ${result.ok}`);
+        return result.ok;
+      } catch (uploadError) {
+        console.warn("Simplified upload failed, falling back to chunked upload:", uploadError);
+        // Fall through to chunked upload
+      }
+    }
+    
+    // Fall back to chunked upload
     const startResult = await assetActor.startAssetUpload(
       file.name,
       file.type,
@@ -173,27 +299,14 @@ export const uploadAsset = async (
     
     const assetId = startResult.ok;
     
-    // Read the file in chunks
-    const chunkSize = 500 * 1024; // 500KB chunks
-    const fileSize = file.size;
-    let offset = 0;
+    // Upload in a single chunk
+    const chunkResult = await assetActor.uploadChunk(
+      assetId,
+      Array.from(uint8Array)
+    );
     
-    while (offset < fileSize) {
-      const end = Math.min(offset + chunkSize, fileSize);
-      const chunk = file.slice(offset, end);
-      const uint8Array = new Uint8Array(await chunk.arrayBuffer());
-      
-      // Upload the chunk
-      const chunkResult = await assetActor.uploadChunk(
-        assetId,
-        Array.from(uint8Array)
-      );
-      
-      if ('err' in chunkResult) {
-        throw new Error(chunkResult.err);
-      }
-      
-      offset = end;
+    if ('err' in chunkResult) {
+      throw new Error(chunkResult.err);
     }
     
     // Finish the upload
@@ -203,6 +316,7 @@ export const uploadAsset = async (
       throw new Error(finishResult.err);
     }
     
+    console.log(`Upload successful: ${finishResult.ok}`);
     return finishResult.ok;
   } catch (error) {
     console.error('Error uploading asset:', error);
@@ -223,6 +337,18 @@ export const createCampaign = async (
   filterDetails: FilterDetails
 ): Promise<bigint | Error> => {
   try {
+    console.log("Creating campaign with params:", {
+      title,
+      description,
+      target,
+      deadline,
+      mainImageUrl,
+      filterImageUrl,
+      creatorName,
+      category,
+      filterDetails
+    });
+    
     const campaignActor = await createCampaignActor();
     
     // Create a category object dynamically
@@ -245,8 +371,10 @@ export const createCampaign = async (
     const result = await campaignActor.createCampaign(request);
     
     if ('ok' in result) {
+      console.log("Campaign created successfully with ID:", result.ok.toString());
       return result.ok;
     } else {
+      console.error("Campaign creation failed:", result.err);
       throw new Error(result.err);
     }
   } catch (error) {
@@ -255,10 +383,25 @@ export const createCampaign = async (
   }
 };
 
+// Helper function to convert a category to a displayable string
+export const categoryToString = (category: CauseCategory): string => {
+  if ('Health' in category) return 'Health';
+  if ('Education' in category) return 'Education';
+  if ('Environment' in category) return 'Environment';
+  if ('Equality' in category) return 'Equality';
+  if ('Poverty' in category) return 'Poverty';
+  if ('HumanRights' in category) return 'Human Rights';
+  if ('AnimalWelfare' in category) return 'Animal Welfare';
+  return 'Other';
+};
+
 export const getAllCampaigns = async (): Promise<Campaign[]> => {
   try {
+    console.log("Fetching all campaigns from canister:", CANISTER_IDS.CAMPAIGN);
     const campaignActor = await createCampaignActor();
-    return await campaignActor.getAllCampaigns();
+    const campaigns = await campaignActor.getAllCampaigns();
+    console.log(`Retrieved ${campaigns.length} campaigns`);
+    return campaigns;
   } catch (error) {
     console.error(`Error fetching campaigns from canister ${CANISTER_IDS.CAMPAIGN}:`, error);
     console.log('Using IC host:', host);
@@ -272,7 +415,7 @@ export const getCampaign = async (id: bigint): Promise<Campaign | null> => {
     const result = await campaignActor.getCampaign(id);
     
     if (result.length > 0) {
-      return result[0] as Campaign;
+      return result[0];
     }
     return null;
   } catch (error) {
@@ -311,6 +454,28 @@ export const getUserCampaigns = async (): Promise<Campaign[]> => {
   }
 };
 
+// Get campaigns by a specific user principal
+export const getCampaignsByCreator = async (creator: Principal): Promise<Campaign[]> => {
+  try {
+    const campaignActor = await createCampaignActor();
+    
+    // Check if getCampaignsByCreator method exists
+    if ('getCampaignsByCreator' in campaignActor) {
+      return await (campaignActor as any).getCampaignsByCreator(creator);
+    } else {
+      // Fallback: Get all campaigns and filter by creator
+      console.log("getCampaignsByCreator not available, using fallback method");
+      const allCampaigns = await campaignActor.getAllCampaigns();
+      return allCampaigns.filter((campaign: Campaign) => 
+        Principal.fromText(campaign.creator.toString()).toText() === creator.toText()
+      );
+    }
+  } catch (error) {
+    console.error('Error fetching campaigns by creator:', error);
+    return [];
+  }
+};
+
 export const donateToCampaign = async (
   campaignId: bigint,
   amount: number,
@@ -339,6 +504,9 @@ export const CanisterService = {
   getConfig: () => config,
   getCanisterId: (name: 'ASSET' | 'CAMPAIGN' | 'USER') => CANISTER_IDS[name],
   
+  // Helper functions
+  categoryToString,
+  
   // User methods
   registerUser,
   getUserProfile,
@@ -354,6 +522,7 @@ export const CanisterService = {
   getActiveCampaigns,
   getTopCampaigns,
   getUserCampaigns,
+  getCampaignsByCreator,
   donateToCampaign,
 };
 

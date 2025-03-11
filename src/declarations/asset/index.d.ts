@@ -1,50 +1,53 @@
-import type {
-  ActorSubclass,
-  HttpAgentOptions,
-  ActorConfig,
-  Agent,
-} from "@dfinity/agent";
+// src/declarations/asset/index.d.ts - Add direct type exports
+
+import type { ActorSubclass, HttpAgentOptions, ActorConfig, Agent } from "@dfinity/agent";
 import type { Principal } from "@dfinity/principal";
 import type { IDL } from "@dfinity/candid";
 
-import { _SERVICE } from './asset.did';
+// Re-export needed types directly
+export type AssetId = string;
+export type ChunkId = bigint;
+export type AssetType = { 'MainImage': null } | { 'FilterImage': null } | { 'Other': null };
+
+export type Asset = {
+  id: AssetId;
+  owner: Principal;
+  createdAt: bigint;
+  contentType: string;
+  filename: string;
+  chunkIds: Array<ChunkId>;
+  assetType: AssetType;
+};
+
+export type Result = { 'ok': ChunkId } | { 'err': string };
+export type Result_1 = { 'ok': AssetId } | { 'err': string };
+export type Result_2 = { 'ok': string } | { 'err': string };
+export type Result_3 = { 'ok': null } | { 'err': string };
+
+// Define the service interface
+export interface _SERVICE {
+  'acceptCycles': () => Promise<void>;
+  'deleteAsset': (arg_0: AssetId) => Promise<Result_3>;
+  'finishAssetUpload': (arg_0: AssetId) => Promise<Result_2>;
+  'getAssetInfo': (arg_0: AssetId) => Promise<[] | [Asset]>;
+  'getMyAssets': () => Promise<Array<Asset>>;
+  'startAssetUpload': (arg_0: string, arg_1: string, arg_2: AssetType) => Promise<Result_1>;
+  'uploadAssetSimple': (arg_0: string, arg_1: string, arg_2: Array<number>, arg_3: AssetType) => Promise<Result_2>;
+  'uploadChunk': (arg_0: AssetId, arg_1: Array<number>) => Promise<Result>;
+}
 
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const canisterId: string;
 
 export declare interface CreateActorOptions {
-  /**
-   * @see {@link Agent}
-   */
   agent?: Agent;
-  /**
-   * @see {@link HttpAgentOptions}
-   */
   agentOptions?: HttpAgentOptions;
-  /**
-   * @see {@link ActorConfig}
-   */
   actorOptions?: ActorConfig;
 }
 
-/**
- * Intializes an {@link ActorSubclass}, configured with the provided SERVICE interface of a canister.
- * @constructs {@link ActorSubClass}
- * @param {string | Principal} canisterId - ID of the canister the {@link Actor} will talk to
- * @param {CreateActorOptions} options - see {@link CreateActorOptions}
- * @param {CreateActorOptions["agent"]} options.agent - a pre-configured agent you'd like to use. Supercedes agentOptions
- * @param {CreateActorOptions["agentOptions"]} options.agentOptions - options to set up a new agent
- * @see {@link HttpAgentOptions}
- * @param {CreateActorOptions["actorOptions"]} options.actorOptions - options for the Actor
- * @see {@link ActorConfig}
- */
 export declare const createActor: (
   canisterId: string | Principal,
   options?: CreateActorOptions
 ) => ActorSubclass<_SERVICE>;
 
-/**
- * Intialized Actor using default settings, ready to talk to a canister using its candid interface
- * @constructs {@link ActorSubClass}
- */
 export declare const asset: ActorSubclass<_SERVICE>;

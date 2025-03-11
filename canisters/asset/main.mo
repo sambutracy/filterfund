@@ -1,4 +1,4 @@
-// Asset Canister for handling file uploads (images)
+// Updated Asset Canister with improved upload functionality
 import Array "mo:base/Array";
 import Buffer "mo:base/Buffer";
 import Cycles "mo:base/ExperimentalCycles";
@@ -11,6 +11,7 @@ import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Time "mo:base/Time";
 import Int "mo:base/Int";
+import Debug "mo:base/Debug";
 
 actor AssetCanister {
     
@@ -209,7 +210,60 @@ actor AssetCanister {
         chunks[id] := ?chunk;
     };
     
-    // Asset management functions
+    // ===== NEW SIMPLIFIED UPLOAD METHOD =====
+    public shared(msg) func uploadAssetSimple(
+        filename: Text,
+        contentType: Text,
+        data: Blob,
+        assetType: AssetType
+    ) : async Result.Result<Text, Text> {
+        let caller = msg.caller;
+        
+        // Validation
+        if (Principal.isAnonymous(caller)) {
+            return #err("Anonymous principal not allowed");
+        };
+        
+        if (not validateContentType(contentType)) {
+            return #err("Invalid content type. Only images are supported.");
+        };
+        
+        // Create asset ID
+        let timestamp = Time.now();
+        let assetId = generateAssetId(caller, filename, timestamp);
+        
+        // Create and store chunk
+        let chunkId = nextChunkId;
+        nextChunkId += 1;
+        
+        let chunk: AssetChunk = {
+            id = chunkId;
+            data = data;
+        };
+        
+        storeChunk(chunk);
+        
+        // Create and store asset
+        let newAsset: Asset = {
+            id = assetId;
+            owner = caller;
+            createdAt = timestamp;
+            contentType = contentType;
+            filename = filename;
+            chunkIds = [chunkId];
+            assetType = assetType;
+        };
+        
+        assets.put(assetId, newAsset);
+        
+        // Return the asset URL - using canister ID for construction
+        let canisterId = Principal.toText(Principal.fromActor(this));
+        let assetUrl = "http://" # canisterId # ".raw.ic0.app/asset/" # assetId;
+        Debug.print("Asset URL created: " # assetUrl);
+        #ok(assetUrl);
+    };
+    
+    // Original asset management functions - keeping for backward compatibility
     public shared(msg) func startAssetUpload(
         filename: Text,
         contentType: Text,
@@ -307,8 +361,8 @@ actor AssetCanister {
                     return #err("No chunks uploaded for this asset");
                 };
                 
-                // Return the asset URL - using hardcoded canister ID for simplicity
-                let assetUrl = "http://bkyz2-fmaaa-aaaaa-qaaaq-cai.raw.ic0.app/asset/" # assetId;
+                // Return the asset URL using this canister's ID
+                let assetUrl = "http://" # Principal.toText(Principal.fromActor(this)) # ".raw.ic0.app/asset/" # assetId;
                 #ok(assetUrl);
             };
         };

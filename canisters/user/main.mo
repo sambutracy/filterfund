@@ -1,4 +1,4 @@
-// User Canister
+// Complete User Canister Implementation
 import Array "mo:base/Array";
 import Hash "mo:base/Hash";
 import HashMap "mo:base/HashMap";
@@ -10,6 +10,7 @@ import Text "mo:base/Text";
 import Time "mo:base/Time";
 import Char "mo:base/Char";
 import Nat32 "mo:base/Nat32";
+import Debug "mo:base/Debug";
 
 actor UserCanister {
     // Type definitions
@@ -181,18 +182,36 @@ actor UserCanister {
         };
     };
     
+    // User statistics update - accepts calls from other canisters
     public shared(msg) func updateUserStats(
         incrementDonations: ?Nat,
         incrementCampaigns: ?Nat
     ) : async Result.Result<(), Text> {
+        // Get the user profile - allow calls from other canisters
         let caller = msg.caller;
         
-        // Only allow this to be called by other canisters (e.g., campaign canister)
-        // In production, you'd want to add proper authorization here
+        Debug.print("Updating user stats for user: " # Principal.toText(caller));
+        Debug.print("incrementDonations: " # debug_show(incrementDonations));
+        Debug.print("incrementCampaigns: " # debug_show(incrementCampaigns));
         
+        // Try to find the user by principal
         switch (users.get(caller)) {
             case (null) { 
-                return #err("User not found"); 
+                // If user doesn't exist, create a default profile
+                let defaultProfile = {
+                    principal = caller;
+                    username = "User_" # Principal.toText(caller).substring(0, 5);
+                    email = "user@filterfund.com";
+                    bio = ?"FilterFund User";
+                    avatarUrl = null;
+                    socialLinks = [];
+                    created = Time.now();
+                    totalDonations = Option.get(incrementDonations, 0);
+                    campaignsCreated = Option.get(incrementCampaigns, 0);
+                };
+                
+                users.put(caller, defaultProfile);
+                #ok(());
             };
             case (?profile) {
                 let newDonations = profile.totalDonations + Option.get(incrementDonations, 0);
@@ -205,6 +224,54 @@ actor UserCanister {
                 };
                 
                 users.put(caller, updatedProfile);
+                #ok(());
+            };
+        };
+    };
+    
+    // New function to update stats for any user (for campaign canister to use)
+    public shared(msg) func updateUserStatsByPrincipal(
+        userId: Principal,
+        incrementDonations: ?Nat,
+        incrementCampaigns: ?Nat
+    ) : async Result.Result<(), Text> {
+        // Permission check - only allow from campaign canister
+        let CAMPAIGN_CANISTER_ID = Principal.fromText("be2us-64aaa-aaaaa-qaabq-cai");
+        
+        if (not Principal.equal(msg.caller, CAMPAIGN_CANISTER_ID)) {
+            return #err("Unauthorized: only campaign canister can call this function");
+        };
+        
+        // Try to find the user by principal
+        switch (users.get(userId)) {
+            case (null) { 
+                // If user doesn't exist, create a default profile
+                let defaultProfile = {
+                    principal = userId;
+                    username = "User_" # Principal.toText(userId).substring(0, 5);
+                    email = "user@filterfund.com";
+                    bio = ?"FilterFund User";
+                    avatarUrl = null;
+                    socialLinks = [];
+                    created = Time.now();
+                    totalDonations = Option.get(incrementDonations, 0);
+                    campaignsCreated = Option.get(incrementCampaigns, 0);
+                };
+                
+                users.put(userId, defaultProfile);
+                #ok(());
+            };
+            case (?profile) {
+                let newDonations = profile.totalDonations + Option.get(incrementDonations, 0);
+                let newCampaigns = profile.campaignsCreated + Option.get(incrementCampaigns, 0);
+                
+                let updatedProfile = {
+                    profile with
+                    totalDonations = newDonations;
+                    campaignsCreated = newCampaigns;
+                };
+                
+                users.put(userId, updatedProfile);
                 #ok(());
             };
         };
@@ -249,5 +316,54 @@ actor UserCanister {
         }));
         
         matches;
+    };
+    
+    // New helpers to get top users
+    public query func getTopCreators(limit: Nat) : async [UserProfile] {
+        let allUsers = Iter.toArray(users.vals());
+        let sortedUsers = Array.sort<UserProfile>(
+            allUsers,
+            func(a: UserProfile, b: UserProfile) : {#less; #equal; #greater} {
+                if (a.campaignsCreated > b.campaignsCreated) {
+                    #less
+                } else if (a.campaignsCreated < b.campaignsCreated) {
+                    #greater
+                } else {
+                    #equal
+                }
+            }
+        );
+        
+        let resultLimit = if (sortedUsers.size() < limit) {
+            sortedUsers.size()
+        } else {
+            limit
+        };
+        
+        Array.subArray(sortedUsers, 0, resultLimit);
+    };
+    
+    public query func getTopDonors(limit: Nat) : async [UserProfile] {
+        let allUsers = Iter.toArray(users.vals());
+        let sortedUsers = Array.sort<UserProfile>(
+            allUsers,
+            func(a: UserProfile, b: UserProfile) : {#less; #equal; #greater} {
+                if (a.totalDonations > b.totalDonations) {
+                    #less
+                } else if (a.totalDonations < b.totalDonations) {
+                    #greater
+                } else {
+                    #equal
+                }
+            }
+        );
+        
+        let resultLimit = if (sortedUsers.size() < limit) {
+            sortedUsers.size()
+        } else {
+            limit
+        };
+        
+        Array.subArray(sortedUsers, 0, resultLimit);
     };
 };

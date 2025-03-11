@@ -1,4 +1,4 @@
-// Campaign Canister
+// Complete Campaign Canister Implementation
 import Array "mo:base/Array";
 import Buffer "mo:base/Buffer";
 import HashMap "mo:base/HashMap";
@@ -10,6 +10,7 @@ import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Time "mo:base/Time";
 import Order "mo:base/Order";
+import Debug "mo:base/Debug";
 
 actor CampaignCanister {
     // Type definitions
@@ -79,21 +80,51 @@ actor CampaignCanister {
     private stable var userCampaignsEntries : [(Principal, [CampaignId])] = [];
     
     // Using a simple array-based approach instead of HashMap which is causing issues
-    private var campaignsData : [var Campaign] = [var];
+    private var campaignsData : [var ?Campaign] = [var];
     
     private var userCampaigns = HashMap.HashMap<Principal, [CampaignId]>(
         0, Principal.equal, Principal.hash
     );
 
+    // Interface for UserCanister
+    type UserCanister = actor {
+        updateUserStats : (opt Nat, opt Nat) -> async Result.Result<(), Text>;
+    };
+
     // Initialize state from stable variables on upgrade
     system func preupgrade() {
-        campaignsArray := Array.freeze(campaignsData);
+        // Convert campaignsData to a stable format
+        let buffer = Buffer.Buffer<Campaign>(0);
+        for (i in Iter.range(0, campaignsData.size() - 1)) {
+            switch (campaignsData[i]) {
+                case null { /* Skip */ };
+                case (?campaign) { buffer.add(campaign); };
+            };
+        };
+        campaignsArray := Buffer.toArray(buffer);
+        
         userCampaignsEntries := Iter.toArray(userCampaigns.entries());
     };
 
     system func postupgrade() {
-        // Initialize campaigns array
-        campaignsData := Array.thaw(campaignsArray);
+        // Initialize campaigns array with null values
+        campaignsData := Array.init<?Campaign>(nextCampaignId, null);
+        
+        // Populate campaigns array
+        for (campaign in campaignsArray.vals()) {
+            if (campaign.id < campaignsData.size()) {
+                campaignsData[campaign.id] := ?campaign;
+            } else {
+                // This should not happen, but add safety for expansion
+                let newSize = campaign.id + 1;
+                let newArray = Array.init<?Campaign>(newSize, null);
+                for (i in Iter.range(0, campaignsData.size() - 1)) {
+                    newArray[i] := campaignsData[i];
+                };
+                newArray[campaign.id] := ?campaign;
+                campaignsData := newArray;
+            };
+        };
         
         // Initialize user campaigns map
         userCampaigns := HashMap.fromIter<Principal, [CampaignId]>(
@@ -124,7 +155,7 @@ actor CampaignCanister {
         if (id >= campaignsData.size()) {
             return null;
         };
-        return ?campaignsData[id];
+        return campaignsData[id];
     };
 
     // Helper function to update a campaign
@@ -132,7 +163,7 @@ actor CampaignCanister {
         if (id >= campaignsData.size()) {
             return false;
         };
-        campaignsData[id] := campaign;
+        campaignsData[id] := ?campaign;
         return true;
     };
 
@@ -188,13 +219,27 @@ actor CampaignCanister {
         // Add to array (expand if needed)
         if (campaignId >= campaignsData.size()) {
             let newSize = campaignId + 1;
-            let newArray = Array.init<Campaign>(newSize, newCampaign);
-            campaignsData := Array.thaw(Array.freeze(newArray));
+            let newArray = Array.init<?Campaign>(newSize, null);
+            for (i in Iter.range(0, campaignsData.size() - 1)) {
+                newArray[i] := campaignsData[i];
+            };
+            newArray[campaignId] := ?newCampaign;
+            campaignsData := newArray;
         } else {
-            campaignsData[campaignId] := newCampaign;
+            campaignsData[campaignId] := ?newCampaign;
         };
         
         addToUserCampaigns(caller, campaignId);
+        
+        // Try to update user statistics (increment campaign count)
+        try {
+            let userCanisterID = Principal.fromText(Principal.toText(Principal.fromText("br5f7-7uaaa-aaaaa-qaaca-cai")));
+            let userActor: UserCanister = actor(Principal.toText(userCanisterID));
+            ignore await userActor.updateUserStats(null, ?1);
+        } catch (e) {
+            // Log error but don't fail the campaign creation
+            Debug.print("Failed to update user stats: " # debug_show(e));
+        };
         
         nextCampaignId += 1;
         #ok(campaignId);
@@ -206,21 +251,44 @@ actor CampaignCanister {
 
     public query func getAllCampaigns() : async [Campaign] {
         // Filter out empty slots if any
-        let buffer = Buffer.Buffer<Campaign>(campaignsData.size());
-        for (i in campaignsData.vals()) {
-            buffer.add(i);
+        let buffer = Buffer.Buffer<Campaign>(0);
+        for (i in Iter.range(0, campaignsData.size() - 1)) {
+            switch(campaignsData[i]) {
+                case null { /* Skip */ };
+                case (?campaign) { buffer.add(campaign); };
+            };
         };
         Buffer.toArray(buffer)
     };
 
     public query func getCampaignsByCategory(category: CauseCategory) : async [Campaign] {
         let filtered = Buffer.Buffer<Campaign>(0);
-        for (campaign in campaignsData.vals()) {
-            if (campaign.category == category) {
-                filtered.add(campaign);
+        for (i in Iter.range(0, campaignsData.size() - 1)) {
+            switch(campaignsData[i]) {
+                case null { /* Skip */ };
+                case (?campaign) {
+                    if (campaignCategoryEqual(campaign.category, category)) {
+                        filtered.add(campaign);
+                    };
+                };
             };
         };
         Buffer.toArray(filtered);
+    };
+
+    // Helper function to compare campaign categories
+    private func campaignCategoryEqual(a: CauseCategory, b: CauseCategory) : Bool {
+        switch (a, b) {
+            case (#Health, #Health) { true };
+            case (#Education, #Education) { true };
+            case (#Environment, #Environment) { true };
+            case (#Equality, #Equality) { true };
+            case (#Poverty, #Poverty) { true };
+            case (#HumanRights, #HumanRights) { true };
+            case (#AnimalWelfare, #AnimalWelfare) { true };
+            case (#Other, #Other) { true };
+            case (_, _) { false };
+        };
     };
 
     public query(msg) func getMyCampaigns() : async [Campaign] {
@@ -235,6 +303,24 @@ actor CampaignCanister {
             switch (findCampaign(id)) {
                 case (null) { /* Skip */ };
                 case (?campaign) { result.add(campaign); };
+            };
+        };
+        
+        Buffer.toArray(result);
+    };
+
+    // Add campaigns by creator principal 
+    public query func getCampaignsByCreator(creator: Principal) : async [Campaign] {
+        let result = Buffer.Buffer<Campaign>(0);
+        
+        for (i in Iter.range(0, campaignsData.size() - 1)) {
+            switch(campaignsData[i]) {
+                case null { /* Skip */ };
+                case (?campaign) {
+                    if (Principal.equal(campaign.creator, creator)) {
+                        result.add(campaign);
+                    };
+                };
             };
         };
         
@@ -289,6 +375,16 @@ actor CampaignCanister {
                 
                 let success = updateCampaign(campaignId, updatedCampaign);
                 if (success) {
+                    // Try to update user statistics (increment donation count)
+                    try {
+                        let userCanisterID = Principal.fromText(Principal.toText(Principal.fromText("br5f7-7uaaa-aaaaa-qaaca-cai")));
+                        let userActor: UserCanister = actor(Principal.toText(userCanisterID));
+                        ignore await userActor.updateUserStats(?amount, null);
+                    } catch (e) {
+                        // Log error but don't fail the donation
+                        Debug.print("Failed to update user donation stats: " # debug_show(e));
+                    };
+                    
                     #ok(());
                 } else {
                     #err("Failed to update campaign");
@@ -325,9 +421,14 @@ actor CampaignCanister {
     // Query functions for statistics and reporting
     public query func getActiveCampaigns() : async [Campaign] {
         let filtered = Buffer.Buffer<Campaign>(0);
-        for (campaign in campaignsData.vals()) {
-            if (campaign.isActive and campaign.deadline > Time.now()) {
-                filtered.add(campaign);
+        for (i in Iter.range(0, campaignsData.size() - 1)) {
+            switch(campaignsData[i]) {
+                case null { /* Skip */ };
+                case (?campaign) {
+                    if (campaign.isActive and campaign.deadline > Time.now()) {
+                        filtered.add(campaign);
+                    };
+                };
             };
         };
         Buffer.toArray(filtered);
@@ -356,30 +457,54 @@ actor CampaignCanister {
     };
 
     public query func getTopCampaigns(limit: Nat) : async [Campaign] {
-        var allCampaigns = Array.freeze(campaignsData);
+        let allCampaigns = Buffer.Buffer<Campaign>(0);
+        
+        // Get all valid campaigns
+        for (i in Iter.range(0, campaignsData.size() - 1)) {
+            switch(campaignsData[i]) {
+                case null { /* Skip */ };
+                case (?campaign) {
+                    allCampaigns.add(campaign);
+                };
+            };
+        };
+        
+        let campaignsArray = Buffer.toArray(allCampaigns);
         
         // Sort by amount collected (descending)
-        allCampaigns := Array.sort(allCampaigns, compareByAmount);
+        let sortedCampaigns = Array.sort(campaignsArray, compareByAmount);
         
         // Take only the specified limit
-        if (allCampaigns.size() <= limit) {
-            return allCampaigns;
+        if (sortedCampaigns.size() <= limit) {
+            return sortedCampaigns;
         } else {
-            return Array.subArray(allCampaigns, 0, limit);
+            return Array.subArray(sortedCampaigns, 0, limit);
         };
     };
 
     public query func getRecentCampaigns(limit: Nat) : async [Campaign] {
-        var allCampaigns = Array.freeze(campaignsData);
+        let allCampaigns = Buffer.Buffer<Campaign>(0);
+        
+        // Get all valid campaigns
+        for (i in Iter.range(0, campaignsData.size() - 1)) {
+            switch(campaignsData[i]) {
+                case null { /* Skip */ };
+                case (?campaign) {
+                    allCampaigns.add(campaign);
+                };
+            };
+        };
+        
+        let campaignsArray = Buffer.toArray(allCampaigns);
         
         // Sort by creation time (descending)
-        allCampaigns := Array.sort(allCampaigns, compareByCreated);
+        let sortedCampaigns = Array.sort(campaignsArray, compareByCreated);
         
         // Take only the specified limit
-        if (allCampaigns.size() <= limit) {
-            return allCampaigns;
+        if (sortedCampaigns.size() <= limit) {
+            return sortedCampaigns;
         } else {
-            return Array.subArray(allCampaigns, 0, limit);
+            return Array.subArray(sortedCampaigns, 0, limit);
         };
     };
 
@@ -399,6 +524,14 @@ actor CampaignCanister {
     };
 
     public query func getCampaignCount() : async Nat {
-        campaignsData.size();
+        // Count only non-null campaigns
+        var count = 0;
+        for (i in Iter.range(0, campaignsData.size() - 1)) {
+            switch(campaignsData[i]) {
+                case null { /* Skip */ };
+                case (?_) { count += 1; };
+            };
+        };
+        count
     };
 };
