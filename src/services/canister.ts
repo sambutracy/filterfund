@@ -526,4 +526,10 @@ export const CanisterService = {
   donateToCampaign,
 };
 
+export const canisterIds = {
+  asset: process.env.REACT_APP_ASSET_CANISTER_ID || 'a54ee-liaaa-aaaae-qctoa-cai',
+  campaign: process.env.REACT_APP_CAMPAIGN_CANISTER_ID || 'a25cq-gqaaa-aaaae-qctoq-cai',
+  user: process.env.REACT_APP_USER_CANISTER_ID || 'at6jm-qyaaa-aaaae-qctpa-cai'
+};
+
 export default CanisterService;
