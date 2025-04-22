@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './ProgressBar.module.css';
 
 interface ProgressBarProps {
   progress: number;
@@ -9,13 +10,11 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ progress }) => {
   const clampedProgress = Math.min(100, Math.max(0, progress));
   
   return (
-    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+    <div className={styles.progressContainer}>
       <div 
-        className="bg-lime-500 h-2.5 rounded-full transition-all duration-500 ease-in-out"
-        style={{ width: `${clampedProgress}%` }}
-        aria-valuenow={clampedProgress}
-        aria-valuemin={0}
-        aria-valuemax={100}
+        className={`${styles.progressBar} ${styles[`progress${clampedProgress}`]}`}
+        role="progressbar"
+        aria-label={`${clampedProgress}% complete`}
       ></div>
     </div>
   );

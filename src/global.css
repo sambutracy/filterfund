@@ -4,10 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  body {
-    @apply bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-200;
-  }
+/* Base styles (converted from @layer base) */
+body {
+  @apply bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-200;
 }
 
 /* Global resets and body styling */
@@ -294,9 +293,12 @@ input, textarea, select {
 }
 
 .progress-bar[data-progress] {
-  --progress-width: attr(data-progress);
-  width: calc(1% * attr(data-progress number, 0));
+  --progress-width: var(--value, 0);
+  width: var(--progress-width, 0%);
 }
+
+/* Use this with JavaScript to set the value:
+   element.style.setProperty('--value', '50%'); */
 
 .alert-success {
   @apply bg-lime-100 dark:bg-lime-900 
@@ -337,19 +339,38 @@ html {
   ::-webkit-scrollbar-thumb {
     background-color: #f97316;
     border-radius: 6px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
   }
   
   /* Firefox only - other browsers will ignore these properties */
-  scrollbar-color: #f97316 transparent;
+  scrollbar-width: thin;
+}
+
+/* Firefox scrollbar color (recent versions) */
+@supports (scrollbar-color: auto) and (scrollbar-width: thin) {
+  html {
+    scrollbar-color: #f97316 transparent;
+    scrollbar-width: thin;
+}
+
+html.dark {
+  scrollbar-color: #fb923c transparent;
   scrollbar-width: thin;
 }
 
 html.dark {
   ::-webkit-scrollbar-thumb {
     background-color: #fb923c;
+    border-radius: 6px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
   }
-  scrollbar-color: #fb923c transparent;
-  scrollbar-width: thin;
+  /* Only apply scrollbar-width if the browser supports it */
+  @supports (scrollbar-width: thin) {
+    scrollbar-width: thin;
+  }
+}
 }
 
 /* Campaign item styles */
