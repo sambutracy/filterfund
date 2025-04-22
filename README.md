@@ -1,19 +1,17 @@
 # AR for Equality: Amplifying Social Impact Through AR Filters
 
 ## Project Overview
-
 AR for Equality is an innovative platform that leverages Augmented Reality (AR) filters to raise awareness and funds for social causes. By combining crowdfunding with shareable AR experiences, we enable creators to build campaigns that spread meaningful messages across social media platforms.
 
-### Key Features
-
+## Key Features
 - 🌍 Create AR Filter Campaigns
-- 💸 Crowdfunding with Internet Computer Protocol (ICP)
+- 💸 Crowdfunding with Polkadot Blockchain
 - 🔗 Multi-Platform AR Filter Support (Snapchat, Instagram, TikTok)
 - 🌈 Categories: Health, Education, Environment, Equality, and More
 
 ## SDG Impact
-
 Our platform directly supports multiple UN Sustainable Development Goals:
+
 - Goal 5: Gender Equality
 - Goal 4: Quality Education
 - Goal 10: Reduced Inequalities
@@ -24,9 +22,9 @@ Our platform directly supports multiple UN Sustainable Development Goals:
 ### Backend (Polkadot)
 - Substrate-based Smart Contracts
 - Pallets for:
-  1. **Campaign Management**: Handles campaign creation and donations
-  2. **User Profiles**: Manages user data and authentication
-  3. **Asset Storage**: Manages file metadata for campaign and filter images
+  - Campaign Management: Handles campaign creation and donations
+  - User Profiles: Manages user data and authentication
+  - Asset Storage: Manages file metadata for campaign and filter images
 
 ### Frontend (React)
 - Web3 Authentication via Polkadot Extension & Privy
@@ -35,62 +33,34 @@ Our platform directly supports multiple UN Sustainable Development Goals:
 - Framer Motion Animations
 
 ## Prerequisites
-
 - Node.js (v16+)
 - Polkadot.js Extension
 - Local Substrate Node (for development)
 - Privy Developer Account
 
 ## Local Development Setup
-
 1. Clone the repository
-```bash
-git clone https://github.com/yourusername/ar-for-equality.git
-cd ar-for-equality
-```
-
 2. Install dependencies
-```bash
-npm install
-```
-
 3. Set up environment variables
-   - Create `.env.local` with:
-     ```
-     REACT_APP_PRIVY_APP_ID=your_privy_app_id
-     ```
-
-4. Start local Internet Computer replica
-```bash
-dfx start --clean --background
-```
-
-5. Deploy local canisters
-```bash
-dfx deploy
-```
-
+   - Create `.env.local` with required values
+4. Start local Substrate node (if needed)
+5. Deploy your contracts to the local node
 6. Start development server
-```bash
-npm start
-```
 
 ## Deployment
-
-- Local Development: `dfx deploy`
-- Internet Computer Mainnet: `dfx deploy --network ic`
+- **Local Development**: Deploy to local Substrate node
+- **Polkadot Testnet (Rococo)**: `cargo build --release && polkadot-js-api tx.contracts.instantiate --network rococo --args arguments`
+- **Polkadot Mainnet**: Follow the same process but use `--network polkadot`
 
 ## Technology Stack
-
-- Frontend: React, TypeScript
-- Blockchain: Internet Computer Protocol
-- Authentication: Privy
-- State Management: React Context
-- Styling: Tailwind CSS
-- Animations: Framer Motion
+- **Frontend**: React, TypeScript
+- **Blockchain**: Polkadot / Substrate
+- **Authentication**: Privy & Polkadot.js
+- **State Management**: React Context
+- **Styling**: Tailwind CSS
+- **Animations**: Framer Motion
 
 ## Contributing
-
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
@@ -98,13 +68,11 @@ npm start
 5. Open a Pull Request
 
 ## License
-
 Distributed under the MIT License. See `LICENSE` for more information.
 
 ## Contact
-
-Project Link: [https://github.com/yourusername/ar-for-equality](https://github.com/yourusername/ar-for-equality)
+Project Link: [https://github.com/sambutracy/filterfund](https://github.com/sambutracy/filterfund)
 
 ---
 
-Made with ❤️ for social impact
+*Made with ❤️ for social impact*
