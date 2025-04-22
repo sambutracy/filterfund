@@ -1,26 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CanisterService } from '../services/canister';
+import { CampaignService, Campaign } from '../services/campaign-service';
 import './CampaignList.css';
 
-// Import ICP-specific types
-import type { Campaign as ICPCampaign } from '../services/canister';
-
-// Define internal Campaign type for component use
-type CampaignDisplay = {
-  id: string;
-  title: string;
-  description: string;
-  target?: bigint;
-  amountCollected?: bigint;
-  deadline?: bigint;
-  mainImage?: string;
-  creator?: string;
-  creatorName?: string;
-};
-
 const CampaignList: React.FC = () => {
-  const [campaigns, setCampaigns] = useState<CampaignDisplay[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,31 +12,55 @@ const CampaignList: React.FC = () => {
     const fetchCampaigns = async () => {
       setIsLoading(true);
       try {
-        // Fetch campaigns from the ICP campaign canister
-        const icpCampaigns = await CanisterService.getAllCampaigns();
-        
-        // Map ICP campaign data to the format needed for display
-        const displayCampaigns = icpCampaigns.map(campaign => ({
-          id: campaign.id.toString(),
-          title: campaign.title,
-          description: campaign.description,
-          target: campaign.target,
-          amountCollected: campaign.amountCollected,
-          deadline: campaign.deadline,
-          mainImage: campaign.mainImage,
-          creator: campaign.creator.toString(),
-          creatorName: campaign.creatorName
-        }));
-        
-        setCampaigns(displayCampaigns);
+        // Fetch campaigns from Polkadot
+        const polkadotCampaigns = await CampaignService.getAllCampaigns();
+        setCampaigns(polkadotCampaigns);
       } catch (error) {
-        console.error('Error fetching campaigns from ICP:', error);
+        console.error('Error fetching campaigns from Polkadot:', error);
         setError('Failed to load campaigns. Please try again later.');
         
         // Fallback to dummy data for development
         setCampaigns([
-          { id: "1", title: "Campaign for Women's Rights", description: "Supporting women's empowerment initiatives." },
-          { id: "2", title: "Campaign for Climate Action", description: "Promoting sustainable practices for our planet." },
+          { 
+            id: "1", 
+            title: "Campaign for Women's Rights", 
+            description: "Supporting women's empowerment initiatives.",
+            mainImage: "https://placekitten.com/800/400",
+            filterImage: null,
+            category: "Equality",
+            target: BigInt(10000),
+            amountCollected: BigInt(5000),
+            isActive: true,
+            creatorName: "Jane Doe",
+            creator: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            deadline: BigInt(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            filter: {
+              platform: "Instagram",
+              filterType: "Face Filter",
+              instructions: "Open Instagram camera and search for filter",
+              filterUrl: "https://example.com/filter/womens-rights"
+            }
+          },
+          { 
+            id: "2", 
+            title: "Campaign for Climate Action", 
+            description: "Promoting sustainable practices for our planet.",
+            mainImage: "https://placekitten.com/800/401",
+            filterImage: null,
+            category: "Environment",
+            target: BigInt(15000),
+            amountCollected: BigInt(7500),
+            isActive: true,
+            creatorName: "John Smith",
+            creator: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            deadline: BigInt(Date.now() + 60 * 24 * 60 * 60 * 1000),
+            filter: {
+              platform: "Snapchat",
+              filterType: "World Filter",
+              instructions: "Open Snapchat and scan this QR code",
+              filterUrl: "https://example.com/filter/climate-action"
+            }
+          },
         ]);
       } finally {
         setIsLoading(false);
@@ -95,18 +103,22 @@ const CampaignList: React.FC = () => {
                   <div className="campaign-card">
                     <h3>{campaign.title}</h3>
                     <p>{campaign.description}</p>
-                      {campaign.mainImage && (
-                        <><img
+                    {campaign.mainImage && (
+                      <>
+                        <img
                           src={campaign.mainImage}
                           alt={campaign.title}
-                          className="w-full h-48 object-cover rounded-md mt-4" /><div className="progress-bar-container">
-                            <div
-                              className="progress-bar"
-                              data-progress={Math.min(100, Math.round(Number(campaign.amountCollected || 0) * 100 / Number(campaign.target || 1)))}
-                            ></div>
-                          </div></>
-                      )}
-                    </div>
+                          className="w-full h-48 object-cover rounded-md mt-4" 
+                        />
+                        <div className="progress-bar-container">
+                          <div
+                            className="progress-bar"
+                            data-progress={Math.min(100, Math.round(Number(campaign.amountCollected) * 100 / Number(campaign.target)))}
+                          ></div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </motion.div>
               ))}
             </div>

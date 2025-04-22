@@ -1,0 +1,25 @@
+[package]
+name = "ar-for-equality-runtime"
+version = "0.1.0"
+authors = ["Your Name <youremail@example.com>"]
+edition = "2021"
+
+[dependencies]
+frame-support = { version = "4.0.0", default-features = false }
+frame-system = { version = "4.0.0", default-features = false }
+pallet-campaign-management = { path = "../pallets/campaign-management" }
+pallet-user-profiles = { path = "../pallets/user-profiles" }
+pallet-asset-storage = { path = "../pallets/asset-storage" }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["std"]
+std = [
+    "frame-system/std",
+    "frame-support/std",
+    "pallet-campaign-management/std",
+    "pallet-user-profiles/std",
+    "pallet-asset-storage/std",
+]

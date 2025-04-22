@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
-import { CanisterService } from "../services/canister";
+import { PolkadotService } from "../services/polkadot-service";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { usePrivy } from '@privy-io/react-auth';
 import Notification from "../components/Notification";
@@ -14,13 +14,6 @@ const logDebug = (...args: any[]) => {
     console.log('[CreateCampaign]', ...args);
   }
 };
-
-// Log canister IDs for debugging
-logDebug("Canister IDs being used:", {
-  asset: CanisterService.getCanisterId("ASSET"),
-  campaign: CanisterService.getCanisterId("CAMPAIGN"),
-  user: CanisterService.getCanisterId("USER"),
-});
 
 const CauseCategories = [
   "Health",
@@ -124,7 +117,7 @@ const CreateCampaign: React.FC = () => {
       if (form.mainImageFile) {
         logDebug("Uploading main image");
         try {
-          const result = await CanisterService.uploadAsset(
+          const result = await PolkadotService.uploadAsset(
             form.mainImageFile,
             "MainImage"
           );
@@ -145,7 +138,7 @@ const CreateCampaign: React.FC = () => {
       if (form.filterImageFile) {
         logDebug("Uploading filter image");
         try {
-          const result = await CanisterService.uploadAsset(
+          const result = await PolkadotService.uploadAsset(
             form.filterImageFile,
             "FilterImage"
           );
@@ -165,7 +158,6 @@ const CreateCampaign: React.FC = () => {
       const filterDetails = {
         platform: form.filterPlatform,
         filterUrl: form.filterUrl,
-        previewImage: filterImageUrl,
         filterType: form.filterType,
         instructions: form.filterInstructions,
       };
@@ -183,7 +175,7 @@ const CreateCampaign: React.FC = () => {
         filterDetails,
       });
 
-      const result = await CanisterService.createCampaign(
+      const campaignId = await PolkadotService.createCampaign(
         form.title,
         form.description,
         Number(form.target),
@@ -195,8 +187,7 @@ const CreateCampaign: React.FC = () => {
         filterDetails
       );
 
-      if (typeof result === "bigint") {
-        const campaignId = result.toString();
+      if (campaignId) {
         logDebug("Campaign created successfully with ID:", campaignId);
         
         setSuccessMessage(
@@ -352,7 +343,7 @@ const CreateCampaign: React.FC = () => {
           {/* Funding Target */}
           <div>
             <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
-              Funding Target (ICP) *
+              Funding Target (DOT) *
             </label>
             <input
               type="number"

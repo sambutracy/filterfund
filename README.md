@@ -21,14 +21,15 @@ Our platform directly supports multiple UN Sustainable Development Goals:
 
 ## Technical Architecture
 
-### Backend (Internet Computer Protocol)
-- 3 Core Canisters:
-  1. **Campaign Canister**: Manages campaign creation, donations, and tracking
-  2. **User Canister**: Handles user profiles and authentication
-  3. **Asset Canister**: Manages file uploads for campaign and filter images
+### Backend (Polkadot)
+- Substrate-based Smart Contracts
+- Pallets for:
+  1. **Campaign Management**: Handles campaign creation and donations
+  2. **User Profiles**: Manages user data and authentication
+  3. **Asset Storage**: Manages file metadata for campaign and filter images
 
 ### Frontend (React)
-- Web3 Authentication via Privy
+- Web3 Authentication via Polkadot Extension & Privy
 - Dark/Light Mode Support
 - Responsive Design
 - Framer Motion Animations
@@ -36,9 +37,9 @@ Our platform directly supports multiple UN Sustainable Development Goals:
 ## Prerequisites
 
 - Node.js (v16+)
-- Internet Computer SDK (dfx)
+- Polkadot.js Extension
+- Local Substrate Node (for development)
 - Privy Developer Account
-- Web3 Wallet (Recommended)
 
 ## Local Development Setup
 

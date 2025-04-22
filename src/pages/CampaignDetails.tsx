@@ -4,12 +4,11 @@ import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { CanisterService, Campaign, Donation } from '../services/canister';
-import { Principal } from '@dfinity/principal';
+import { PolkadotService, Donation } from '../services/polkadot-service';
 
 const CampaignDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [campaign, setCampaign] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [donationAmount, setDonationAmount] = useState<string>('');
@@ -25,9 +24,7 @@ const CampaignDetails: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        // Convert string ID to bigint for IC canister
-        const campaignId = BigInt(id);
-        const data = await CanisterService.getCampaign(campaignId);
+        const data = await PolkadotService.getCampaign(id);
         
         if (!data) {
           setError("Campaign not found");
@@ -46,19 +43,6 @@ const CampaignDetails: React.FC = () => {
     fetchCampaign();
   }, [id]);
 
-  // Helper function to get category name from CauseCategory variant
-  const getCategoryName = (category: any): string => {
-    if (!category) return 'Other';
-    if ('Health' in category) return 'Health';
-    if ('Education' in category) return 'Education';
-    if ('Environment' in category) return 'Environment';
-    if ('Equality' in category) return 'Equality';
-    if ('Poverty' in category) return 'Poverty';
-    if ('HumanRights' in category) return 'Human Rights';
-    if ('AnimalWelfare' in category) return 'Animal Welfare';
-    return 'Other';
-  };
-
   // Calculate progress percentage
   const calculateProgress = (): number => {
     if (!campaign) return 0;
@@ -70,13 +54,11 @@ const CampaignDetails: React.FC = () => {
     return Math.min(Math.round((collected / target) * 100), 100);
   };
 
-  // Format date from bigint nanoseconds to readable format
-  const formatDate = (timestamp: bigint | undefined): string => {
+  // Format date from timestamp to readable format
+  const formatDate = (timestamp: number | undefined): string => {
     if (!timestamp) return 'Unknown date';
     
-    // Convert nanoseconds to milliseconds
-    const milliseconds = Number(timestamp) / 1000000;
-    return new Date(milliseconds).toLocaleDateString('en-US', {
+    return new Date(timestamp).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -97,13 +79,11 @@ const CampaignDetails: React.FC = () => {
     setSuccessMessage(null);
     
     try {
-      // Convert string ID to bigint for IC canister
-      const campaignId = BigInt(id);
       const amount = Number(donationAmount);
       const message = donationMessage.trim() || null;
       
-      const success = await CanisterService.donateToCampaign(
-        campaignId,
+      const success = await PolkadotService.donateToCampaign(
+        id,
         amount,
         message,
         isAnonymous
@@ -115,7 +95,7 @@ const CampaignDetails: React.FC = () => {
         setDonationMessage('');
         
         // Refresh campaign data to show updated amount
-        const updatedCampaign = await CanisterService.getCampaign(campaignId);
+        const updatedCampaign = await PolkadotService.getCampaign(id);
         if (updatedCampaign) {
           setCampaign(updatedCampaign);
         }
@@ -190,7 +170,7 @@ const CampaignDetails: React.FC = () => {
               <div className="p-6">
                 <div className="flex flex-wrap gap-2 mb-4">
                   <span className="px-3 py-1 bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 rounded-full text-sm">
-                    {getCategoryName(campaign.category)}
+                    {campaign.category}
                   </span>
                   <span className="px-3 py-1 bg-lime-100 dark:bg-lime-900 text-lime-800 dark:text-lime-200 rounded-full text-sm">
                     {campaign.isActive ? 'Active' : 'Inactive'}
@@ -209,16 +189,15 @@ const CampaignDetails: React.FC = () => {
                 <div className="mb-6">
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-600 dark:text-gray-300">
-                      {Number(campaign.amountCollected).toLocaleString()} ICP raised
+                      {Number(campaign.amountCollected).toLocaleString()} DOT raised
                     </span>
                     <span className="text-gray-600 dark:text-gray-300">
-                      {calculateProgress()}% of {Number(campaign.target).toLocaleString()} ICP
+                      {calculateProgress()}% of {Number(campaign.target).toLocaleString()} DOT
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4">
                     <div 
-                      className="bg-lime-500 rounded-full h-4"
-                      style={{ width: `${calculateProgress()}%` }}
+                      className={`bg-lime-500 rounded-full h-4 progress-bar-fill w-[${calculateProgress()}%]`}
                     ></div>
                   </div>
                 </div>
@@ -270,15 +249,15 @@ const CampaignDetails: React.FC = () => {
                         <div key={index} className="border-b border-gray-200 dark:border-gray-700 pb-4">
                           <div className="flex justify-between">
                             <span className="font-medium">
-                              {donation.isAnonymous ? 'Anonymous' : `Donor ${donation.donor.toString().substring(0, 8)}...`}
+                              {donation.isAnonymous ? 'Anonymous' : `Donor ${donation.donor.substring(0, 8)}...`}
                             </span>
                             <span className="text-lime-600 dark:text-lime-400 font-semibold">
-                              {Number(donation.amount).toLocaleString()} ICP
+                              {Number(donation.amount).toLocaleString()} DOT
                             </span>
                           </div>
-                          {donation.message && donation.message.length > 0 && (
+                          {donation.message && (
                             <p className="text-gray-600 dark:text-gray-300 mt-1">
-                              "{donation.message[0]}"
+                              "{donation.message}"
                             </p>
                           )}
                           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
@@ -317,7 +296,7 @@ const CampaignDetails: React.FC = () => {
               <form onSubmit={handleDonate}>
                 <div className="mb-4">
                   <label className="block text-gray-700 dark:text-gray-300 mb-2">
-                    Donation Amount (ICP)
+                    Donation Amount (DOT)
                   </label>
                   <input
                     type="number"

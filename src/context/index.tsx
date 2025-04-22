@@ -1,75 +1,14 @@
 import React, { createContext, useContext } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-
-interface Campaign {
-  id: string;
-  title: string;
-  description: string;
-  target: number;
-  deadline: number;
-  amountCollected: number;
-  image: string;
-  creator: string;
-}
-
-// Mock API service to be replaced with your actual backend service
-const mockApiService = {
-  getCampaigns: async (): Promise<Campaign[]> => {
-    // This would be replaced with your actual API call
-    return [
-      {
-        id: '1',
-        title: 'Women Empowerment Campaign',
-        description: 'Supporting women\'s rights initiatives around the world.',
-        target: 5000,
-        deadline: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days from now
-        amountCollected: 2500,
-        image: 'https://via.placeholder.com/400x300',
-        creator: '0x12345...'
-      },
-      {
-        id: '2',
-        title: 'Environmental Protection',
-        description: 'Cleaning up oceans and forests to preserve our planet.',
-        target: 10000,
-        deadline: Date.now() + 60 * 24 * 60 * 60 * 1000, // 60 days from now
-        amountCollected: 3000,
-        image: 'https://via.placeholder.com/400x300',
-        creator: '0x67890...'
-      }
-    ];
-  },
-  createCampaign: async (campaign: any): Promise<void> => {
-    console.log('Creating campaign:', campaign);
-    // Implement actual API call here
-  },
-  donate: async (campaignId: string, amount: number): Promise<void> => {
-    console.log(`Donating ${amount} to campaign ${campaignId}`);
-    // Implement actual API call here
-  },
-  getUserCampaigns: async (): Promise<Campaign[]> => {
-    // This would be replaced with your actual API call
-    return [
-      {
-        id: '1',
-        title: 'My Campaign',
-        description: 'A campaign I created.',
-        target: 5000,
-        deadline: Date.now() + 30 * 24 * 60 * 60 * 1000,
-        amountCollected: 2500,
-        image: 'https://via.placeholder.com/400x300',
-        creator: '0x12345...'
-      }
-    ];
-  }
-};
+import { PolkadotService, Campaign } from '../services/polkadot-service';
+import { connectWallet } from '../services/polkadot-api';
 
 interface StateContextType {
   address: string | null;
   getCampaigns: () => Promise<Campaign[]>;
   createCampaign: (form: any) => Promise<void>;
   donate: (campaignId: string, amount: number) => Promise<void>;
-  getUserCampaigns: () => Promise<Campaign[]>;
+  connectPolkadotWallet: () => Promise<any>;
 }
 
 const StateContext = createContext<StateContextType | null>(null);
@@ -81,7 +20,7 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const getCampaigns = async (): Promise<Campaign[]> => {
     try {
-      return await mockApiService.getCampaigns();
+      return await PolkadotService.getAllCampaigns();
     } catch (error) {
       console.error('Error fetching campaigns:', error);
       return [];
@@ -90,7 +29,22 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const createCampaign = async (form: any): Promise<void> => {
     try {
-      await mockApiService.createCampaign(form);
+      await PolkadotService.createCampaign(
+        form.title,
+        form.description,
+        Number(form.target),
+        new Date(form.deadline),
+        form.mainImage,
+        form.filterImage,
+        form.creatorName,
+        form.category,
+        {
+          platform: form.filterPlatform,
+          filterUrl: form.filterUrl,
+          filterType: form.filterType,
+          instructions: form.filterInstructions
+        }
+      );
     } catch (error) {
       console.error('Error creating campaign:', error);
       throw error;
@@ -99,30 +53,38 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const donate = async (campaignId: string, amount: number): Promise<void> => {
     try {
-      await mockApiService.donate(campaignId, amount);
+      await PolkadotService.donateToCampaign(
+        campaignId,
+        amount,
+        null, // message
+        false // isAnonymous
+      );
     } catch (error) {
       console.error('Error donating to campaign:', error);
       throw error;
     }
   };
 
-  const getUserCampaigns = async (): Promise<Campaign[]> => {
+  const connectPolkadotWallet = async () => {
     try {
-      return await mockApiService.getUserCampaigns();
+      const accounts = await connectWallet();
+      return accounts;
     } catch (error) {
-      console.error('Error fetching user campaigns:', error);
-      return [];
+      console.error('Error connecting Polkadot wallet:', error);
+      throw error;
     }
   };
 
+  const contextValue = {
+    address,
+    getCampaigns,
+    createCampaign,
+    donate,
+    connectPolkadotWallet
+  };
+
   return (
-    <StateContext.Provider value={{
-      address,
-      getCampaigns,
-      createCampaign,
-      donate,
-      getUserCampaigns,
-    }}>
+    <StateContext.Provider value={contextValue}>
       {children}
     </StateContext.Provider>
   );
@@ -130,6 +92,8 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 export const useStateContext = () => {
   const context = useContext(StateContext);
-  if (!context) throw new Error('useStateContext must be used within a StateContextProvider');
+  if (context === null) {
+    throw new Error('useStateContext must be used within a StateContextProvider');
+  }
   return context;
 };

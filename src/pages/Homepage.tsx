@@ -3,9 +3,7 @@ import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { Campaign } from '../services/canister';
-import { Filter } from '../services/api';
-import { CanisterService } from '../services/canister';
+import { PolkadotService, Filter, Campaign } from '../services/polkadot-service';
 
 // Configure logging for debugging
 const ENABLE_DEBUG_LOGGING = true;
@@ -25,9 +23,8 @@ const CampaignCard: React.FC<{campaign: Campaign}> = ({ campaign }) => {
     return Math.min(Math.round((collected / target) * 100), 100);
   };
 
-  const formatDate = (timestamp: bigint): string => {
-    const milliseconds = Number(timestamp) / 1_000_000; // Convert nanoseconds to milliseconds
-    return new Date(milliseconds).toLocaleDateString();
+  const formatDate = (timestamp: number): string => {
+    return new Date(timestamp).toLocaleDateString();
   };
 
   const progress = calculateProgress();
@@ -57,22 +54,20 @@ const CampaignCard: React.FC<{campaign: Campaign}> = ({ campaign }) => {
             <span className="text-gray-500 dark:text-gray-400">Progress</span>
             <span className="font-medium text-lime-600 dark:text-lime-400">{progress}%</span>
           </div>
-          
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div className="progress-bar-container">
             <div 
-              className="bg-lime-500 h-2 rounded-full" 
-              style={{ width: `${progress}%` }}
+              className={`progress-bar progress-${progress}`} 
             ></div>
           </div>
         </div>
         
         <div className="flex justify-between items-center">
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            <div>Target: {Number(campaign.target).toLocaleString()} ICP</div>
+            <div>Target: {Number(campaign.target).toLocaleString()} DOT</div>
             <div>Ends: {formatDate(campaign.deadline)}</div>
           </div>
           
-          <Link to={`/campaign/${campaign.id.toString()}`}>
+          <Link to={`/campaign/${campaign.id}`}>
             <button className="bg-gradient-to-r from-orange-500 to-lime-500 hover:from-orange-600 hover:to-lime-600 text-white px-4 py-2 rounded-lg text-sm">
               View Details
             </button>
@@ -138,9 +133,9 @@ const HomePage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      logDebug("Fetching campaigns from canister");
-      // Use our CanisterService directly
-      const data = await CanisterService.getAllCampaigns();
+      logDebug("Fetching campaigns from Polkadot");
+      // Use our PolkadotService directly
+      const data = await PolkadotService.getAllCampaigns();
       logDebug(`Retrieved ${data.length} campaigns`);
       setCampaigns(data);
     } catch (error) {
@@ -157,15 +152,15 @@ const HomePage: React.FC = () => {
     try {
       logDebug("Fetching filters (based on top campaigns)");
       // For filters, we'll use the top campaigns and convert them to filter format
-      const data = await CanisterService.getTopCampaigns(10);
+      const data = await PolkadotService.getTopCampaigns(10);
       
       // Map campaigns to filters format for display
       const filtersFromCampaigns = data.map(campaign => ({
-        id: campaign.id.toString(),
+        id: campaign.id,
         title: campaign.title,
         image: campaign.mainImage,
         filterUrl: campaign.filter.filterUrl,
-        category: CanisterService.categoryToString(campaign.category),
+        category: campaign.category,
         creator: campaign.creatorName,
         platform: campaign.filter.platform,
         instructions: campaign.filter.instructions
@@ -270,7 +265,7 @@ const HomePage: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {campaigns.map((campaign) => (
-                  <CampaignCard key={campaign.id.toString()} campaign={campaign} />
+                  <CampaignCard key={campaign.id} campaign={campaign} />
                 ))}
               </div>
             )}
