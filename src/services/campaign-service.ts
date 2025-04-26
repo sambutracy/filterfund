@@ -1,5 +1,6 @@
 import { initPolkadotApi } from './polkadot-api';
 import { ApiPromise } from '@polkadot/api';
+import { web3FromAddress } from '@polkadot/extension-dapp';
 
 export interface Filter {
   platform: string;
@@ -27,6 +28,7 @@ export interface Campaign {
 export class CampaignService {
   static async getAllCampaigns(): Promise<Campaign[]> {
     try {
+      console.log('Getting all campaigns...');
       const api = await initPolkadotApi();
       
       // Check if campaign pallet exists on the connected chain
@@ -35,50 +37,40 @@ export class CampaignService {
         return this.getMockCampaigns();
       }
       
-      // Query your Polkadot smart contract/pallet
-      const result = await api.query.campaignPallet.campaigns.entries();
+      // Query your Polkadot pallet
+      const campaignCount = await api.query.campaignPallet.campaignCount();
+      const campaigns: Campaign[] = [];
       
-      // Transform the data to match our Campaign interface
-      return result.map(([key, value]) => {
-        try {
-          // Cast to any to avoid TypeScript errors when accessing properties
-          const campaignData = value.toJSON ? value.toJSON() : value;
-          
-          // Check if campaignData is an object before accessing properties
-          if (!campaignData || typeof campaignData !== 'object') {
-            console.error('Invalid campaign data format:', campaignData);
-            return null;
-          }
-          
-          // Access data with safe type assertions
-          const data = campaignData as Record<string, any>;
-          
-          // Safely extract values with fallbacks
-          return {
-            id: key.args?.[0]?.toString() || "unknown",
-            title: this.getStringValue(data?.title),
-            description: this.getStringValue(data?.description),
-            mainImage: this.getStringValue(data?.mainImage),
-            filterImage: this.getStringValue(data?.filterImage),
-            category: this.getStringValue(data?.category),
-            target: this.getBigIntValue(data?.target),
-            amountCollected: this.getBigIntValue(data?.amountCollected),
-            isActive: Boolean(data?.isActive),
-            creatorName: this.getStringValue(data?.creatorName),
-            creator: this.getStringValue(data?.creator),
-            deadline: this.getBigIntValue(data?.deadline),
+      // Iterate through all campaigns
+      for (let i = 0; i < Number(campaignCount); i++) {
+        const campaignOpt = await api.query.campaignPallet.campaigns(i);
+        
+        if (campaignOpt.isSome) {
+          const campaign = campaignOpt.unwrap();
+          campaigns.push({
+            id: i.toString(),
+            title: this.hexToString(campaign.title),
+            description: this.hexToString(campaign.description),
+            mainImage: this.hexToString(campaign.main_image),
+            filterImage: this.hexToString(campaign.filter_image),
+            category: this.hexToString(campaign.category),
+            target: BigInt(campaign.target.toString()),
+            amountCollected: BigInt(campaign.amount_collected.toString()),
+            isActive: campaign.is_active,
+            creatorName: this.hexToString(campaign.creator_name),
+            creator: campaign.creator.toString(),
+            deadline: BigInt(campaign.deadline.toString()),
             filter: {
-              platform: this.getStringValue(data?.filter?.platform),
-              filterType: this.getStringValue(data?.filter?.filterType),
-              instructions: this.getStringValue(data?.filter?.instructions),
-              filterUrl: this.getStringValue(data?.filter?.filterUrl)
+              platform: this.hexToString(campaign.filter.platform),
+              filterType: this.hexToString(campaign.filter.filter_type),
+              instructions: this.hexToString(campaign.filter.instructions),
+              filterUrl: this.hexToString(campaign.filter.filter_url)
             }
-          };
-        } catch (error) {
-          console.error('Error parsing campaign data:', error);
-          return null;
+          });
         }
-      }).filter(campaign => campaign !== null) as Campaign[];
+      }
+      
+      return campaigns;
     } catch (error) {
       console.error('Error fetching campaigns from Polkadot:', error);
       // Return mock data in case of error (development only)
@@ -86,23 +78,24 @@ export class CampaignService {
     }
   }
   
-  // Helper methods for safe value extraction
-  private static getStringValue(value: any): string {
-    if (value === undefined || value === null) return '';
-    return typeof value.toString === 'function' ? value.toString() : String(value);
-  }
-  
-  private static getBigIntValue(value: any): bigint {
-    if (value === undefined || value === null) return BigInt(0);
-    try {
-      return BigInt(value.toString ? value.toString() : value);
-    } catch {
-      return BigInt(0);
+  // Helper method to convert hex to string
+  private static hexToString(hexValue: any): string {
+    if (!hexValue || !hexValue.toHex) return '';
+    
+    const hex = hexValue.toHex();
+    let str = '';
+    for (let i = 0; i < hex.length; i += 2) {
+      const code = parseInt(hex.substr(i, 2), 16);
+      if (code !== 0) {
+        str += String.fromCharCode(code);
+      }
     }
+    return str;
   }
   
   static async createCampaign(campaign: Omit<Campaign, 'id' | 'amountCollected' | 'isActive'>): Promise<string> {
     try {
+      console.log('Creating campaign...');
       const api = await initPolkadotApi();
       
       // Check if the user has injected account (through extension)
@@ -113,27 +106,28 @@ export class CampaignService {
       
       // Select the first account
       const account = accounts[0];
+      const injector = await web3FromAddress(account);
       
       // Create a transaction to create a campaign
       const tx = api.tx.campaignPallet.createCampaign(
-        campaign.title,
-        campaign.description,
-        campaign.mainImage,
-        campaign.filterImage || '',
-        campaign.category,
+        this.stringToHex(campaign.title),
+        this.stringToHex(campaign.description),
+        this.stringToHex(campaign.mainImage),
+        this.stringToHex(campaign.filterImage || ''),
+        this.stringToHex(campaign.category),
         campaign.target.toString(),
         campaign.deadline.toString(),
-        {
-          platform: campaign.filter.platform,
-          filterType: campaign.filter.filterType,
-          instructions: campaign.filter.instructions,
-          filterUrl: campaign.filter.filterUrl
-        },
-        campaign.creatorName
+        [
+          this.stringToHex(campaign.filter.platform),
+          this.stringToHex(campaign.filter.filterType),
+          this.stringToHex(campaign.filter.instructions),
+          this.stringToHex(campaign.filter.filterUrl)
+        ],
+        this.stringToHex(campaign.creatorName)
       );
       
       // Sign and send the transaction
-      const result = await tx.signAndSend(account);
+      const result = await tx.signAndSend(account, { signer: injector.signer });
       
       // Return the campaign ID (this would ideally come from the chain event)
       return result.toString();
@@ -143,8 +137,19 @@ export class CampaignService {
     }
   }
   
+  // Helper method to convert string to hex
+  private static stringToHex(value: string): string {
+    let hex = '';
+    for (let i = 0; i < value.length; i++) {
+      const code = value.charCodeAt(i);
+      hex += code.toString(16).padStart(2, '0');
+    }
+    return '0x' + hex;
+  }
+  
   static async donateToCampaign(campaignId: string, amount: number): Promise<void> {
     try {
+      console.log(`Donating ${amount} to campaign ${campaignId}...`);
       const api = await initPolkadotApi();
       
       // Check if the user has injected account
@@ -155,6 +160,7 @@ export class CampaignService {
       
       // Select the first account
       const account = accounts[0];
+      const injector = await web3FromAddress(account);
       
       // Create a transaction to donate to a campaign
       const tx = api.tx.campaignPallet.donateToCampaign(
@@ -163,7 +169,7 @@ export class CampaignService {
       );
       
       // Sign and send the transaction
-      await tx.signAndSend(account);
+      await tx.signAndSend(account, { signer: injector.signer });
     } catch (error) {
       console.error('Error donating to campaign on Polkadot:', error);
       throw error;

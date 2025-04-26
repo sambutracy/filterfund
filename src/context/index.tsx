@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { PolkadotService, Campaign } from '../services/polkadot-service';
 import { connectWallet } from '../services/polkadot-api';
@@ -51,16 +51,47 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  const [transactionStatus, setTransactionStatus] = useState<{
+    status: 'idle' | 'pending' | 'success' | 'error';
+    message: string;
+    txHash?: string;
+  }>({ status: 'idle', message: '' });
+
   const donate = async (campaignId: string, amount: number): Promise<void> => {
     try {
-      await PolkadotService.donateToCampaign(
+      setTransactionStatus({ 
+        status: 'pending', 
+        message: 'Connecting to wallet...' 
+      });
+      
+      // First ensure we have wallet connection
+      await connectPolkadotWallet();
+      
+      setTransactionStatus({ 
+        status: 'pending', 
+        message: 'Please confirm the transaction in your wallet' 
+      });
+      
+      // Execute donation
+      const txHash = await PolkadotService.donateToCampaign(
         campaignId,
-        amount,
-        null, // message
-        false // isAnonymous
+        amount
       );
+      
+      setTransactionStatus({ 
+        status: 'success', 
+        message: 'Donation successful!', 
+        txHash 
+      });
+      
+      // Refresh campaign data
+      await getCampaigns();
     } catch (error) {
       console.error('Error donating to campaign:', error);
+      setTransactionStatus({ 
+        status: 'error', 
+        message: error.message || 'Failed to process donation' 
+      });
       throw error;
     }
   };

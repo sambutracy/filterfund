@@ -1,6 +1,5 @@
 import React from 'react';
-import styles from './ProgressBar.module.css';
-
+// No need to import CSS module when using global.css
 interface ProgressBarProps {
   progress: number;
 }
@@ -10,9 +9,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ progress }) => {
   const clampedProgress = Math.min(100, Math.max(0, progress));
   
   return (
-    <div className={styles.progressContainer}>
+    <div className="progressContainer">
       <div 
-        className={`${styles.progressBar} ${styles[`progress${clampedProgress}`]}`}
+        className={`progressBar progress-${clampedProgress}`}
         role="progressbar"
         aria-label={`${clampedProgress}% complete`}
       ></div>

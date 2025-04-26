@@ -4,6 +4,12 @@ import Layout from '../components/Layout';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { PolkadotService, Filter, Campaign } from '../services/polkadot-service';
+import DebugPanel from '../components/DebugPanel';
+
+// Config object for environment settings
+const config = {
+  isDevelopment: process.env.NODE_ENV === 'development'
+};
 
 // Configure logging for debugging
 const ENABLE_DEBUG_LOGGING = true;
@@ -304,6 +310,13 @@ const HomePage: React.FC = () => {
           </>
         )}
       </motion.div>
+
+      {config.isDevelopment && (
+        <div className="mt-8 border-t pt-8">
+          <h3 className="text-xl font-semibold mb-4">Developer Tools</h3>
+          <DebugPanel />
+        </div>
+      )}
     </Layout>
   );
 };
