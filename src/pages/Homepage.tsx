@@ -84,8 +84,21 @@ const CampaignCard: React.FC<{campaign: Campaign}> = ({ campaign }) => {
   );
 };
 
+// Add this interface at the top of your file
+interface FilterCardData {
+  id: string;
+  title: string;
+  image: string;
+  filterUrl: string;
+  category: string;
+  creator: string;
+  platform: string;
+  instructions: string;
+  filterType: string; // Required by Filter interface
+}
+
 // Filter card component for homepage
-const FilterCard: React.FC<{filter: Filter}> = ({ filter }) => {
+const FilterCard: React.FC<{filter: FilterCardData}> = ({ filter }) => {
   return (
     <motion.div 
       whileHover={{ y: -5 }}
@@ -130,7 +143,7 @@ const FilterCard: React.FC<{filter: Filter}> = ({ filter }) => {
 const HomePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [filters, setFilters] = useState<Filter[]>([]);
+  const [filters, setFilters] = useState<FilterCardData[]>([]);
   const [activeTab, setActiveTab] = useState('campaigns'); // 'campaigns' or 'filters'
   const [error, setError] = useState<string | null>(null);
   
@@ -169,7 +182,8 @@ const HomePage: React.FC = () => {
         category: campaign.category,
         creator: campaign.creatorName,
         platform: campaign.filter.platform,
-        instructions: campaign.filter.instructions
+        instructions: campaign.filter.instructions,
+        filterType: campaign.filter.filterType // Add this missing field
       }));
       
       logDebug(`Converted ${filtersFromCampaigns.length} campaigns to filters`);

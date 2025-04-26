@@ -26,7 +26,7 @@ const CampaignList: React.FC = () => {
             title: "Campaign for Women's Rights", 
             description: "Supporting women's empowerment initiatives.",
             mainImage: "https://placekitten.com/800/400",
-            filterImage: null,
+            filterImage: "",
             category: "Equality",
             target: BigInt(10000),
             amountCollected: BigInt(5000),
@@ -34,6 +34,7 @@ const CampaignList: React.FC = () => {
             creatorName: "Jane Doe",
             creator: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
             deadline: BigInt(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            donations: [],
             filter: {
               platform: "Instagram",
               filterType: "Face Filter",
@@ -46,7 +47,7 @@ const CampaignList: React.FC = () => {
             title: "Campaign for Climate Action", 
             description: "Promoting sustainable practices for our planet.",
             mainImage: "https://placekitten.com/800/401",
-            filterImage: null,
+            filterImage: "",
             category: "Environment",
             target: BigInt(15000),
             amountCollected: BigInt(7500),
@@ -54,13 +55,14 @@ const CampaignList: React.FC = () => {
             creatorName: "John Smith",
             creator: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
             deadline: BigInt(Date.now() + 60 * 24 * 60 * 60 * 1000),
+            donations: [],
             filter: {
               platform: "Snapchat",
               filterType: "World Filter",
               instructions: "Open Snapchat and scan this QR code",
               filterUrl: "https://example.com/filter/climate-action"
             }
-          },
+          }
         ]);
       } finally {
         setIsLoading(false);

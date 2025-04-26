@@ -1,33 +1,13 @@
 import React, { createContext, useContext, useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { PolkadotService } from '../services/polkadot-service';
+import { PolkadotService, Campaign, Filter } from '../services/polkadot-service';
 import { connectWallet } from '../services/polkadot-api';
-
-// Define Campaign interface locally if not exported elsewhere
-interface Campaign {
-  id: string;
-  title: string;
-  description: string;
-  target: bigint;
-  deadline: Date;
-  amountCollected: number;
-  mainImage: string;
-  filterImage: string;
-  creatorName: string;
-  category: string;
-  filter: {
-    platform: string;
-    filterUrl: string;
-    filterType: string;
-    instructions: string;
-  };
-}
 
 interface StateContextType {
   address: string | null;
   getCampaigns: () => Promise<Campaign[]>;
   createCampaign: (form: any) => Promise<void>;
-  donate: (campaignId: string, amount: number) => Promise<void>;
+  donate: (campaignId: string, amount: number, message?: string, isAnonymous?: boolean) => Promise<void>;
   connectPolkadotWallet: () => Promise<any>;
 }
 
@@ -40,12 +20,7 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const getCampaigns = async (): Promise<Campaign[]> => {
     try {
-      const campaigns = await PolkadotService.getAllCampaigns();
-      return campaigns.map(campaign => ({
-        ...campaign,
-        deadline: new Date(campaign.deadline), // Convert number to Date
-        amountCollected: Number(campaign.amountCollected) // Convert bigint to number
-      }));
+      return await PolkadotService.getAllCampaigns();
     } catch (error) {
       console.error('Error fetching campaigns:', error);
       return [];
@@ -57,10 +32,10 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
       await PolkadotService.createCampaign(
         form.title,
         form.description,
-        BigInt(form.target),
-        new Date(form.deadline).getTime(),
+        Number(form.target), // Convert string to number
+        new Date(form.deadline).getTime(), // Convert date to timestamp
         form.mainImage,
-        form.filterImage,
+        form.filterImage || "", // Ensure not null
         form.creatorName,
         form.category,
         {
@@ -82,7 +57,12 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
     txHash?: string;
   }>({ status: 'idle', message: '' });
 
-  const donate = async (campaignId: string, amount: number): Promise<void> => {
+  const donate = async (
+    campaignId: string, 
+    amount: number, 
+    message: string = "", 
+    isAnonymous: boolean = false
+  ): Promise<void> => {
     try {
       setTransactionStatus({ 
         status: 'pending', 
@@ -97,10 +77,12 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
         message: 'Please confirm the transaction in your wallet' 
       });
       
-      // Execute donation
+      // Execute donation with message and anonymity preferences
       const result = await PolkadotService.donateToCampaign(
         campaignId,
-        amount
+        amount,
+        message,
+        isAnonymous
       );
       
       setTransactionStatus({ 

@@ -2,7 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-interface FilterCardProps {
+interface FilterCardData {
   id: string;
   title: string;
   image: string;
@@ -11,14 +11,13 @@ interface FilterCardProps {
   creator: string;
 }
 
-const FilterCard: React.FC<FilterCardProps> = ({ 
-  id, 
-  title, 
-  image, 
-  filterUrl, 
-  category,
-  creator 
-}) => {
+interface FilterCardProps {
+  filter: FilterCardData; // Use the new interface
+}
+
+const FilterCard: React.FC<FilterCardProps> = ({ filter }) => {
+  const { id, title, image, filterUrl, category, creator } = filter;
+
   return (
     <motion.div 
       className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden"

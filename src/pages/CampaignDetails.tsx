@@ -80,7 +80,7 @@ const CampaignDetails: React.FC = () => {
     
     try {
       const amount = Number(donationAmount);
-      const message = donationMessage.trim() || null;
+      const message = donationMessage.trim() || undefined;
       
       const success = await PolkadotService.donateToCampaign(
         id,
