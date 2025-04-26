@@ -10,9 +10,9 @@ if (typeof window !== 'undefined') {
 // Default Polkadot endpoints
 const DEFAULT_POLKADOT_ENDPOINT = "wss://rpc.polkadot.io";
 const DEFAULT_DEVELOPMENT_ENDPOINT = "ws://127.0.0.1:9944";
-REACT_APP_POLKADOT_ENDPOINT=wss://shibuya-rpc.dwellir.com
-REACT_APP_CONTRACT_ADDRESS=Your_Deployed_Contract_Address
-REACT_APP_CONTRACT_ABI=Your_Contract_ABI_JSON
+const REACT_APP_POLKADOT_ENDPOINT = "wss://shibuya-rpc.dwellir.com";
+const REACT_APP_CONTRACT_ADDRESS = "Your_Deployed_Contract_Address";
+const REACT_APP_CONTRACT_ABI = "Your_Contract_ABI_JSON";
 
 // Privy authentication
 const DEFAULT_PRIVY_APP_ID = "cm7x0zd4401hgnd3c43e9kfpr";

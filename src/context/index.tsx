@@ -1,7 +1,27 @@
 import React, { createContext, useContext, useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { PolkadotService, Campaign } from '../services/polkadot-service';
+import { PolkadotService } from '../services/polkadot-service';
 import { connectWallet } from '../services/polkadot-api';
+
+// Define Campaign interface locally if not exported elsewhere
+interface Campaign {
+  id: string;
+  title: string;
+  description: string;
+  target: bigint;
+  deadline: Date;
+  amountCollected: number;
+  mainImage: string;
+  filterImage: string;
+  creatorName: string;
+  category: string;
+  filter: {
+    platform: string;
+    filterUrl: string;
+    filterType: string;
+    instructions: string;
+  };
+}
 
 interface StateContextType {
   address: string | null;
@@ -20,7 +40,12 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const getCampaigns = async (): Promise<Campaign[]> => {
     try {
-      return await PolkadotService.getAllCampaigns();
+      const campaigns = await PolkadotService.getAllCampaigns();
+      return campaigns.map(campaign => ({
+        ...campaign,
+        deadline: new Date(campaign.deadline), // Convert number to Date
+        amountCollected: Number(campaign.amountCollected) // Convert bigint to number
+      }));
     } catch (error) {
       console.error('Error fetching campaigns:', error);
       return [];
@@ -32,8 +57,8 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
       await PolkadotService.createCampaign(
         form.title,
         form.description,
-        Number(form.target),
-        new Date(form.deadline),
+        BigInt(form.target),
+        new Date(form.deadline).getTime(),
         form.mainImage,
         form.filterImage,
         form.creatorName,
@@ -73,7 +98,7 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
       
       // Execute donation
-      const txHash = await PolkadotService.donateToCampaign(
+      const result = await PolkadotService.donateToCampaign(
         campaignId,
         amount
       );
@@ -81,7 +106,7 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setTransactionStatus({ 
         status: 'success', 
         message: 'Donation successful!', 
-        txHash 
+        txHash: typeof result === 'string' ? result : undefined 
       });
       
       // Refresh campaign data
@@ -90,7 +115,7 @@ export const StateContextProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.error('Error donating to campaign:', error);
       setTransactionStatus({ 
         status: 'error', 
-        message: error.message || 'Failed to process donation' 
+        message: error instanceof Error ? error.message : 'Failed to process donation' 
       });
       throw error;
     }
