@@ -11,7 +11,7 @@ const Button: React.FC<ButtonProps> = ({
   variant = "default",
   ...props 
 }) => {
-  const baseStyles = "bg-gradient-to-r from-orange-500 to-lime-500 hover:from-orange-600 hover:to-lime-600 text-white px-8 py-3 rounded-lg transform transition hover:scale-105";
+  const baseStyles = "bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-700 hover:to-rose-600 text-white px-8 py-3 rounded-lg transform transition hover:scale-105";
   
   return (
     <button

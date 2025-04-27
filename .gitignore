@@ -28,3 +28,19 @@ secrets/
 
 # Node.js dependencies (for your frontend)
 /node_modules/
+
+# React build output
+/build/
+/dist/
+
+# Testing and debug files
+/coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cache files
+.cache/
+.parcel-cache/
+.npm
+.eslintcache

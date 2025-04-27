@@ -55,7 +55,7 @@ const DisplayCampaigns: React.FC<DisplayCampaignsProps> = ({ title, isLoading, c
   return (
     <div>
       {/* Title with motion - using wrapper div with className */}
-      <div className="text-3xl font-bold text-orange-600 dark:text-orange-400 mb-6">
+      <div className="text-3xl font-bold text-red-600 dark:text-red-500 mb-6">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -73,7 +73,7 @@ const DisplayCampaigns: React.FC<DisplayCampaignsProps> = ({ title, isLoading, c
           style={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}
         >
           {isLoading && (
-            <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full">
+            <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full">
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -119,7 +119,7 @@ const DisplayCampaigns: React.FC<DisplayCampaignsProps> = ({ title, isLoading, c
 
                   <div className="flex flex-col p-4">
                     <div className="block">
-                      <h3 className="font-semibold text-[16px] text-orange-600 dark:text-orange-400 text-left leading-[26px] truncate">
+                      <h3 className="font-semibold text-[16px] text-red-600 dark:text-red-500 text-left leading-[26px] truncate">
                         {campaign.title}
                       </h3>
                       <p className="mt-[5px] font-normal text-gray-600 dark:text-gray-300 text-left leading-[18px] truncate">
@@ -129,7 +129,7 @@ const DisplayCampaigns: React.FC<DisplayCampaignsProps> = ({ title, isLoading, c
 
                     <div className="flex justify-between mt-[15px] gap-2">
                       <div className="flex flex-col">
-                        <h4 className="font-semibold text-[14px] text-lime-600 dark:text-lime-400 leading-[22px]">
+                        <h4 className="font-semibold text-[14px] text-red-600 dark:text-red-500 leading-[22px]">
                           {campaign.amountCollected} ICP
                         </h4>
                         <p className="mt-[3px] font-normal text-[12px] text-gray-600 dark:text-gray-300 leading-[18px] sm:max-w-[120px] truncate">
@@ -137,7 +137,7 @@ const DisplayCampaigns: React.FC<DisplayCampaignsProps> = ({ title, isLoading, c
                         </p>
                       </div>
                       <div className="flex flex-col">
-                        <h4 className="font-semibold text-[14px] text-lime-600 dark:text-lime-400 leading-[22px]">
+                        <h4 className="font-semibold text-[14px] text-red-600 dark:text-red-500 leading-[22px]">
                           {new Date(campaign.deadline).toLocaleDateString()}
                         </h4>
                         <p className="mt-[3px] font-normal text-[12px] text-gray-600 dark:text-gray-300 leading-[18px] sm:max-w-[120px] truncate">

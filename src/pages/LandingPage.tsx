@@ -25,7 +25,7 @@ const LandingPage: React.FC = () => {
           className="text-center"
         >
           <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white sm:text-5xl md:text-6xl">
-            <span className="block text-orange-600 dark:text-orange-400 xl:inline">
+            <span className="block text-red-600 dark:text-red-500 xl:inline">
               FilterFund
             </span>{' '}
             <span className="block xl:inline">
@@ -42,7 +42,7 @@ const LandingPage: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => login()}
-              className="w-full sm:w-auto flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 md:text-lg md:px-10"
+              className="w-full sm:w-auto flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-red-600 hover:bg-red-700 md:text-lg md:px-10"
             >
               Get Started
             </motion.button>

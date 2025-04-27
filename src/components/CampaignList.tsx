@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CampaignService, Campaign } from '../services/campaign-service';
 import './CampaignList.css';
+import CampaignSkeleton from './CampaignSkeleton';
 
 const CampaignList: React.FC = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -76,8 +77,10 @@ const CampaignList: React.FC = () => {
     <>
       {/* Loading state */}
       {isLoading && (
-        <div className="flex justify-center items-center py-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array(6).fill(0).map((_, index) => (
+            <CampaignSkeleton key={index} />
+          ))}
         </div>
       )}
 

@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-gradient-to-r from-orange-500 to-lime-500 dark:from-orange-600 dark:to-lime-600 text-white">
+    <footer className="bg-gradient-to-r from-red-600 to-rose-500 dark:from-red-700 dark:to-rose-600 text-white">
       <div className="container mx-auto px-4 py-4">
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           {/* Logo and Copyright */}
           <div className="flex items-center space-x-2">
-            <Link to="/" className="text-lg font-semibold hover:text-orange-100">
+            <Link to="/" className="text-lg font-semibold hover:text-red-100">
               FilterFund
             </Link>
             <span className="text-sm text-white/80">
@@ -18,13 +18,13 @@ const Footer: React.FC = () => {
 
           {/* Quick Links */}
           <div className="flex items-center space-x-6">
-            <Link to="/home" className="text-sm hover:text-orange-100 transition-colors">
+            <Link to="/home" className="text-sm hover:text-red-100 transition-colors">
               Explore
             </Link>
-            <Link to="/create-campaign" className="text-sm hover:text-orange-100 transition-colors">
+            <Link to="/create-campaign" className="text-sm hover:text-red-100 transition-colors">
               Create
             </Link>
-            <Link to="/profile" className="text-sm hover:text-orange-100 transition-colors">
+            <Link to="/profile" className="text-sm hover:text-red-100 transition-colors">
               Profile
             </Link>
           </div>

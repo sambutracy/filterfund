@@ -1,8 +1,19 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { usePrivy } from '@privy-io/react-auth';
+import LoadingSpinner from './components/LoadingSpinner';
 
-// Import pages
+// Add a proper loading UI component
+const PageLoader = () => (
+  <div className="flex justify-center items-center min-h-screen bg-white dark:bg-gray-900">
+    <div className="text-center">
+      <LoadingSpinner className="mx-auto h-12 w-12" />
+      <p className="mt-4 text-gray-600 dark:text-gray-400">Loading experience...</p>
+    </div>
+  </div>
+);
+
+// Keep your existing lazy imports for page components
 const LandingPage = React.lazy(() => import('./pages/LandingPage'));
 const HomePage = React.lazy(() => import('./pages/Homepage'));
 const CreateCampaign = React.lazy(() => import('./pages/CreateCampaign'));
@@ -26,7 +37,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const AppRoutes: React.FC = () => {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         
@@ -60,4 +71,4 @@ const AppRoutes: React.FC = () => {
   );
 };
 
-export default AppRoutes; 
+export default AppRoutes;

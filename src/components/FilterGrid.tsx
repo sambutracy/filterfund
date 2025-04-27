@@ -32,12 +32,7 @@ const FilterGrid: React.FC<FilterGridProps> = ({ filters, isLoading }) => {
       {filters.map(filter => (
         <FilterCard 
           key={filter.id}
-          id={filter.id}
-          title={filter.title}
-          image={filter.image}
-          filterUrl={filter.filterUrl}
-          category={filter.category}
-          creator={filter.creator}
+          filter={filter} // Pass the entire filter object as a single prop
         />
       ))}
     </div>

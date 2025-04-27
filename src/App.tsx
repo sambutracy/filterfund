@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from 'next-themes';
+import './global.css';
 
 // Import centralized config
 import { config } from './config/env';
@@ -11,6 +12,7 @@ import HomePage from './pages/Homepage';
 import CreateCampaign from './pages/CreateCampaign';
 import CampaignDetails from './pages/CampaignDetails';
 import Profile from './pages/Profile';
+import ConnectionStatus from './components/ConnectionStatus';
 
 const App: React.FC = () => {
   return (
@@ -20,6 +22,7 @@ const App: React.FC = () => {
       enableSystem
     >
       <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
+        <ConnectionStatus />
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/home" element={<HomePage />} />

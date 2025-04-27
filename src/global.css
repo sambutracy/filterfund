@@ -27,19 +27,19 @@ body {
 
 /* Custom gradient backgrounds */
 .gradient-citrus {
-  @apply bg-gradient-to-r from-orange-500 to-lime-500 dark:from-orange-600 dark:to-lime-600;
+  @apply bg-gradient-to-r from-red-600 to-rose-500 dark:from-red-700 dark:to-rose-600;
 }
 
 /* Button styles */
 .button-primary {
-  @apply bg-white dark:bg-gray-800 text-orange-500 dark:text-orange-400 
-         px-4 py-2 rounded-lg hover:bg-orange-100 dark:hover:bg-gray-700 
+  @apply bg-white dark:bg-gray-800 text-red-600 dark:text-red-500 
+         px-4 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-gray-700 
          transition-colors;
 }
 
 .button-secondary {
-  @apply bg-orange-500 dark:bg-orange-600 text-white 
-         px-4 py-2 rounded-lg hover:bg-orange-600 dark:hover:bg-orange-700 
+  @apply bg-red-600 dark:bg-red-700 text-white 
+         px-4 py-2 rounded-lg hover:bg-red-700 dark:hover:bg-red-800 
          transition-colors;
 }
 
@@ -57,7 +57,7 @@ body {
 }
 
 .campaign-card h3 {
-  @apply text-xl font-semibold text-orange-600 dark:text-orange-400 mb-3;
+  @apply text-xl font-semibold text-red-600 dark:text-red-500 mb-3;
 }
 
 .campaign-card p {
@@ -89,7 +89,7 @@ body {
 
 /* Navbar Styles */
 .navbar {
-  background-color: #ff69b4; /* bright pink */
+  background-color: #b91c1c; /* red-700 */
   padding: 1rem 2rem;
   display: flex;
   justify-content: space-between;
@@ -118,7 +118,7 @@ body {
 .hero {
   text-align: center;
   padding: 3rem 1rem;
-  background: linear-gradient(135deg, #ffb6c1, #ff69b4);
+  background: linear-gradient(135deg, #ef4444, #b91c1c); /* red-500 to red-700 */
   color: white;
 }
 
@@ -136,7 +136,7 @@ body {
   display: inline-block;
   padding: 0.75rem 1.5rem;
   background-color: #fff;
-  color: #ff69b4;
+  color: #b91c1c; /* red-700 */
   border-radius: 4px;
   text-decoration: none;
   font-weight: bold;
@@ -148,7 +148,7 @@ body {
 }
 
 .features h2, .about h2 {
-  @apply text-2xl font-bold text-orange-600 dark:text-orange-400 mb-4;
+  @apply text-2xl font-bold text-red-600 dark:text-red-500 mb-4;
 }
 
 .features ul {
@@ -161,13 +161,13 @@ body {
 
 /* Footer Styles */
 .footer {
-  @apply bg-gradient-to-r from-orange-500 to-lime-500 
-         dark:from-orange-600 dark:to-lime-600 
+  @apply bg-gradient-to-r from-red-600 to-rose-500 
+         dark:from-red-700 dark:to-rose-600 
          text-white text-center py-4;
 }
 
 .footer .social-links a {
-  @apply text-white hover:text-orange-100 mx-2 
+  @apply text-white hover:text-red-100 mx-2 
          transition-colors no-underline;
 }
 
@@ -178,13 +178,13 @@ body {
   align-items: center;
   padding: 1rem;
   background-color: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #fca5a5; /* red-300 instead of #e0e0e0 */
   margin-bottom: 1rem;
 }
 
 .header h1 {
   font-size: 1.8rem;
-  color: #2d2d2d;
+  color: #b91c1c; /* red-700 instead of #2d2d2d */
 }
 
 .main {
@@ -203,14 +203,14 @@ body {
   padding: 0.5rem 1rem;
   font-size: 1rem;
   color: #ffffff;
-  background-color: #0078d4;
+  background-color: #b91c1c; /* red-700 */
   border: none;
   border-radius: 4px;
   cursor: pointer;
 }
 
 .login-button:hover {
-  background-color: #005a9e;
+  background-color: #7f1d1d; /* red-900 for darker hover */
 }
 
 /* Form elements */
@@ -219,7 +219,7 @@ input, textarea, select {
          border border-gray-300 dark:border-gray-600 
          text-gray-900 dark:text-white 
          rounded-lg p-2 
-         focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400 
+         focus:ring-2 focus:ring-red-600 dark:focus:ring-red-500 
          focus:border-transparent 
          outline-none;
 }
@@ -232,7 +232,7 @@ input, textarea, select {
 }
 
 .stat-card h3 {
-  @apply text-2xl font-bold text-orange-500 dark:text-orange-400 mb-2;
+  @apply text-2xl font-bold text-red-600 dark:text-red-500 mb-2;
 }
 
 .stat-card p {
@@ -242,7 +242,7 @@ input, textarea, select {
 /* Navigation links */
 .nav-link {
   @apply text-gray-600 dark:text-gray-300 
-         hover:text-orange-500 dark:hover:text-orange-400 
+         hover:text-red-600 dark:hover:text-red-500 
          transition-colors;
 }
 
@@ -260,7 +260,7 @@ input, textarea, select {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border-left-color: #f97316;
+  border-left-color: #dc2626; /* red-600 */
   animation: spin 1s linear infinite;
 }
 
@@ -278,134 +278,56 @@ input, textarea, select {
   @apply p-4 rounded-lg mb-4;
 }
 
-.progress-bar-container {
+.progress-wrapper {
   width: 100%;
-  background-color: #e5e7eb;
-  border-radius: 9999px;
-  height: 0.625rem;
+  margin: 10px 0;
+}
+
+.progress-container {
+  width: 100%;
+  background-color: #f0f0f0;
+  border-radius: 6px;
   overflow: hidden;
+}
+
+.progress-container-thin {
+  height: 6px;
+}
+
+.progress-container-normal {
+  height: 12px;
+}
+
+.progress-container-thick {
+  height: 16px;
 }
 
 .progress-bar {
   height: 100%;
-  background-color: #84cc16;
-  transition: width 0.5s ease-in-out;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+  background: linear-gradient(90deg, #8a2387, #e94057, #f27121);
 }
 
-.progress-bar[data-progress] {
-  --progress-width: var(--value, 0);
-  width: var(--progress-width, 0%);
-}
-
-/* Use this with JavaScript to set the value:
-   element.style.setProperty('--value', '50%'); */
-
-.alert-success {
-  @apply bg-lime-100 dark:bg-lime-900 
-         text-lime-700 dark:text-lime-300;
-}
-
-.alert-error {
-  @apply bg-red-100 dark:bg-red-900 
-         text-red-700 dark:text-red-300;
-}
-
-.alert-warning {
-  @apply bg-yellow-100 dark:bg-yellow-900 
-         text-yellow-700 dark:text-yellow-300;
-}
-
-.alert-info {
-  @apply bg-blue-100 dark:bg-blue-900 
-         text-blue-700 dark:text-blue-300;
-}
-
-/* Ensure smooth transitions */
-.transition-colors {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 200ms;
-}
-
-/* Prevent layout shift when switching themes */
-html {
-  /* Webkit browsers (Chrome, Safari, Edge) */
-  ::-webkit-scrollbar {
-    width: 12px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background-color: #f97316;
-    border-radius: 6px;
-    border: 3px solid transparent;
-    background-clip: padding-box;
-  }
-  
-  /* Firefox only - other browsers will ignore these properties */
-  scrollbar-width: thin;
-}
-
-/* Firefox scrollbar color (recent versions) */
-@supports (scrollbar-color: auto) and (scrollbar-width: thin) {
-  html {
-    scrollbar-color: #f97316 transparent;
-    scrollbar-width: thin;
-}
-
-html.dark {
-  scrollbar-color: #fb923c transparent;
-  scrollbar-width: thin;
-}
-
-html.dark {
-  ::-webkit-scrollbar-thumb {
-    background-color: #fb923c;
-    border-radius: 6px;
-    border: 3px solid transparent;
-    background-clip: padding-box;
-  }
-  /* Only apply scrollbar-width if the browser supports it */
-  @supports (scrollbar-width: thin) {
-    scrollbar-width: thin;
-  }
-}
-}
-
-/* Campaign item styles */
-.campaign-item {
-  padding: 1rem;
-  margin-bottom: 1rem;
-  border-radius: 0.5rem;
-  background-color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.progress-label {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #666;
+  margin-top: 4px;
 }
 
-.campaign-item-content {
-  flex: 1;
+.progress-label-collected {
+  font-weight: 600;
 }
 
-/* Tab navigation styles */
-.tab-active {
-  border-bottom: 2px solid #f97316;
-  color: #f97316;
+.progress-label-target {
+  color: #888;
 }
 
-@media (prefers-color-scheme: dark) {
-  .campaign-card, .campaign-item {
-    background-color: #2d3748;
-    color: #e2e8f0;
-  }
-
-  .progress-bar-container {
-    background-color: #374151;
-  }
-  
-  .tab-active {
-    color: #fb923c;
-    border-color: #fb923c;
-  }
+.progress-fill {
+  width: 0;
+  height: 100%;
+  background-color: #4caf50; /* Example green color */
+  transition: width 0.3s ease-in-out;
 }

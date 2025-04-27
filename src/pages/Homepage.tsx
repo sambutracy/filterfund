@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ProgressBar from '../components/ProgressBar'; // Add this import
 import { PolkadotService, Filter, Campaign } from '../services/polkadot-service';
 import DebugPanel from '../components/DebugPanel';
+import { calculateProgress } from '../utils/calculations';
+import SkeletonCard from '../components/SkeletonCard';
 
 // Config object for environment settings
 const config = {
@@ -21,66 +24,89 @@ const logDebug = (...args: any[]) => {
 
 // Campaign card component for homepage
 const CampaignCard: React.FC<{campaign: Campaign}> = ({ campaign }) => {
-  const calculateProgress = (): number => {
-    const target = Number(campaign.target);
-    const collected = Number(campaign.amountCollected);
-    
-    if (target === 0) return 0;
-    return Math.min(Math.round((collected / target) * 100), 100);
-  };
-
   const formatDate = (timestamp: number): string => {
     return new Date(timestamp).toLocaleDateString();
   };
 
-  const progress = calculateProgress();
+  const progress = calculateProgress(Number(campaign.amountCollected), Number(campaign.target));
+  const timeLeft = Math.max(0, Math.floor((Number(campaign.deadline) - Date.now()) / (1000 * 60 * 60 * 24)));
+  const isEnding = timeLeft <= 7; // Ending soon if 7 days or less
   
   return (
-    <motion.div 
-      whileHover={{ y: -5 }}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden"
-    >
-      <img 
-        src={campaign.mainImage || "/placeholder-campaign.jpg"} 
-        alt={campaign.title}
-        className="w-full h-48 object-cover"
-      />
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden h-full flex flex-col">
+      <div className="relative">
+        <img 
+          src={campaign.mainImage || "/placeholder-campaign.jpg"} 
+          alt={campaign.title}
+          className="w-full h-48 object-cover"
+        />
+        <div className="absolute top-3 left-3">
+          <span className="bg-gray-900 bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
+            {campaign.category}
+          </span>
+        </div>
+        {isEnding && (
+          <div className="absolute top-3 right-3">
+            <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+              {timeLeft === 0 ? 'Ends today' : `${timeLeft} days left`}
+            </span>
+          </div>
+        )}
+      </div>
       
-      <div className="p-5">
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+      <div className="p-5 flex-grow flex flex-col">
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
           {campaign.title}
         </h3>
         
-        <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+          by {campaign.creatorName}
+        </p>
+        
+        <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2 flex-grow">
           {campaign.description}
         </p>
         
         <div className="mb-4">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-500 dark:text-gray-400">Progress</span>
-            <span className="font-medium text-lime-600 dark:text-lime-400">{progress}%</span>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-gray-500 dark:text-gray-400 text-sm">Raised</span>
+            <div className="flex items-center">
+              <span className="font-medium text-red-600 dark:text-red-400">
+                {Number(campaign.amountCollected).toLocaleString()} DOT
+              </span>
+              <span className="mx-1 text-gray-400">/</span>
+              <span className="text-gray-500 dark:text-gray-400">
+                {Number(campaign.target).toLocaleString()} DOT
+              </span>
+            </div>
           </div>
-          <div className="progress-bar-container">
-            <div 
-              className={`progress-bar progress-${progress}`} 
-            ></div>
-          </div>
+          
+          {/* Updated ProgressBar with height as a string preset */}
+          <ProgressBar 
+            progress={progress} 
+            height="thin" 
+            className="w-full"
+          />
         </div>
         
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            <div>Target: {Number(campaign.target).toLocaleString()} DOT</div>
-            <div>Ends: {formatDate(campaign.deadline)}</div>
+        <div className="flex justify-between items-center mt-auto">
+          <div className="flex items-center">
+            <svg className="w-4 h-4 text-gray-400 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {formatDate(campaign.deadline)}
+            </span>
           </div>
           
           <Link to={`/campaign/${campaign.id}`}>
-            <button className="bg-gradient-to-r from-orange-500 to-lime-500 hover:from-orange-600 hover:to-lime-600 text-white px-4 py-2 rounded-lg text-sm">
+            <button className="bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white px-4 py-2 rounded-lg text-sm">
               View Details
             </button>
           </Link>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
@@ -146,7 +172,8 @@ const HomePage: React.FC = () => {
   const [filters, setFilters] = useState<FilterCardData[]>([]);
   const [activeTab, setActiveTab] = useState('campaigns'); // 'campaigns' or 'filters'
   const [error, setError] = useState<string | null>(null);
-  
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Add this state
+
   // Use useCallback to prevent unnecessary re-renders
   const fetchCampaigns = useCallback(async () => {
     setIsLoading(true);
@@ -198,46 +225,144 @@ const HomePage: React.FC = () => {
 
   // Fetch data based on active tab
   useEffect(() => {
-    if (activeTab === 'campaigns') {
-      fetchCampaigns();
-    } else if (activeTab === 'filters') {
-      fetchFilters();
-    }
-  }, [activeTab, fetchCampaigns, fetchFilters]);
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        logDebug('Fetching campaigns...');
+        const fetchedCampaigns = await PolkadotService.getAllCampaigns();
+        setCampaigns(fetchedCampaigns);
+        
+        logDebug('Fetching filters...');
+        const fetchedFilters = await PolkadotService.getAllFilters();
+
+        // Map the Filter objects to FilterCardData objects
+        const mappedFilters = fetchedFilters.map((filter, index) => ({
+          id: `filter-${index}-${Math.random().toString(36).substr(2, 9)}`, // Generate a unique ID
+          title: filter.filterUrl.split('/').pop() || 'Unnamed Filter', // Use the last part of URL as name
+          image: '/placeholder-filter.jpg', // Use a placeholder image
+          filterUrl: filter.filterUrl,
+          category: 'General',
+          creator: 'Unknown Creator',
+          platform: filter.platform || 'Unknown',
+          instructions: filter.instructions || '',
+          filterType: filter.filterType
+        }));
+        setFilters(mappedFilters);
+        
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Failed to load data. Please try again.');
+      } finally {
+        setIsLoading(false);
+        setIsInitialLoad(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Add this inside your component, before rendering
+  // Sort campaigns to show the most funded ones first
+  const sortedCampaigns = useMemo(() => {
+    return [...campaigns].sort((a, b) => {
+      return Number(b.amountCollected) - Number(a.amountCollected);
+    });
+  }, [campaigns]);
 
   return (
     <Layout>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="container mx-auto px-4"
-      >
-        {/* Page Title */}
-        <h1 className="text-3xl font-bold text-center mb-8 text-orange-600 dark:text-orange-400">
-          FilterFund Community Hub
-        </h1>
-        
+      {isInitialLoad ? (
+  <div className="flex justify-center items-center min-h-[300px]">
+    <LoadingSpinner />
+  </div>
+) : (
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }} 
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5 }}
+    className="text-center mb-8"
+  >
+    <h1 className="text-3xl md:text-4xl font-bold text-red-600 dark:text-red-500 mb-3">
+      Welcome to FilterFund
+    </h1>
+    <p className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+      Explore campaigns that combine AR filters with fundraising to make a real impact.
+      Support initiatives that matter or create your own campaign today.
+    </p>
+  </motion.div>
+)}
+
+        {/* Add this after the welcome message but before the tabs */}
+        {!isLoading && (
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 my-8">
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow-sm">
+      <div className="text-2xl font-bold text-red-600 dark:text-red-500">
+        {campaigns.length}
+      </div>
+      <div className="text-sm text-gray-600 dark:text-gray-400">
+        Active Campaigns
+      </div>
+    </div>
+    
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow-sm">
+      <div className="text-2xl font-bold text-red-600 dark:text-red-500">
+        {filters.length}
+      </div>
+      <div className="text-sm text-gray-600 dark:text-gray-400">
+        AR Filters
+      </div>
+    </div>
+    
+    {/* If you track this data */}
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow-sm">
+      <div className="text-2xl font-bold text-red-600 dark:text-red-500">
+        {campaigns.reduce((sum, campaign) => sum + (Number(campaign.amountCollected) || 0), 0).toLocaleString()}
+      </div>
+      <div className="text-sm text-gray-600 dark:text-gray-400">
+        DOT Collected
+      </div>
+    </div>
+    
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow-sm">
+      <div className="text-2xl font-bold text-red-600 dark:text-red-500">
+        {campaigns.filter(c => Number(c.deadline) > Date.now()).length}
+      </div>
+      <div className="text-sm text-gray-600 dark:text-gray-400">
+        Ending Soon
+      </div>
+    </div>
+  </div>
+)}
+
         {/* Tab Navigation */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 mb-8">
+        <div className="flex justify-center mb-8 border-b border-gray-200 dark:border-gray-700">
           <button
-            className={`py-3 px-6 font-medium ${
+            className={`py-3 px-6 font-medium relative ${
               activeTab === 'campaigns' 
-                ? 'border-b-2 border-orange-500 text-orange-600 dark:text-orange-400' 
+                ? 'text-red-600 dark:text-red-500' 
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
             onClick={() => setActiveTab('campaigns')}
           >
             Campaigns
+            {activeTab === 'campaigns' && (
+              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600 dark:bg-red-500"></span>
+            )}
           </button>
+          
           <button
-            className={`py-3 px-6 font-medium ${
+            className={`py-3 px-6 font-medium relative ${
               activeTab === 'filters' 
-                ? 'border-b-2 border-orange-500 text-orange-600 dark:text-orange-400' 
+                ? 'text-red-600 dark:text-red-500' 
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
             onClick={() => setActiveTab('filters')}
           >
             AR Filters
+            {activeTab === 'filters' && (
+              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-red-600 dark:bg-red-500"></span>
+            )}
           </button>
         </div>
         
@@ -250,48 +375,48 @@ const HomePage: React.FC = () => {
         
         {/* Loading Indicator */}
         {isLoading && (
-          <div className="flex justify-center my-12">
-            <LoadingSpinner />
-            <span className="ml-3">Loading...</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array(6).fill(0).map((_, index) => (
+              <SkeletonCard key={index} />
+            ))}
           </div>
         )}
         
         {/* Campaigns Tab Content */}
-        {!isLoading && activeTab === 'campaigns' && (
-          <>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-                Active Campaigns
-              </h2>
-              <Link to="/create-campaign">
-                <button className="bg-gradient-to-r from-orange-500 to-lime-500 hover:from-orange-600 hover:to-lime-600 text-white px-6 py-2 rounded-lg shadow-md">
-                  Create Campaign
-                </button>
-              </Link>
-            </div>
-            
-            {campaigns.length === 0 ? (
-              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                <h3 className="text-xl font-semibold mb-4">No Campaigns Available Yet</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Be the first to create a campaign for a cause you care about!
-                </p>
-                <Link to="/create-campaign">
-                  <button className="bg-gradient-to-r from-orange-500 to-lime-500 hover:from-orange-600 hover:to-lime-600 text-white px-6 py-3 rounded-lg transform transition hover:scale-105">
-                    Create Campaign
-                  </button>
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {campaigns.map((campaign) => (
-                  <CampaignCard key={campaign.id} campaign={campaign} />
-                ))}
-              </div>
-            )}
-          </>
+        {!isLoading && activeTab === 'campaigns' && campaigns.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sortedCampaigns.map((campaign) => (
+              <motion.div
+                key={campaign.id}
+                whileHover={{ y: -5 }}
+                transition={{ duration: 0.2 }}
+              >
+                <CampaignCard campaign={campaign} />
+              </motion.div>
+            ))}
+          </div>
         )}
-        
+
+        {/* If there are no campaigns */}
+        {!isLoading && activeTab === 'campaigns' && campaigns.length === 0 && (
+  <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+    </svg>
+    <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-300 mb-2">
+      No Campaigns Yet
+    </h3>
+    <p className="text-gray-500 dark:text-gray-400 mb-6">
+      Be the first to create a campaign and start raising funds for your cause.
+    </p>
+    <Link to="/create-campaign">
+      <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md">
+        Create Campaign
+      </button>
+    </Link>
+  </div>
+)}
+
         {/* Filters Tab Content */}
         {!isLoading && activeTab === 'filters' && (
           <>
@@ -322,16 +447,28 @@ const HomePage: React.FC = () => {
               </div>
             )}
           </>
-        )}
-      </motion.div>
+    )}
 
-      {config.isDevelopment && (
-        <div className="mt-8 border-t pt-8">
-          <h3 className="text-xl font-semibold mb-4">Developer Tools</h3>
-          <DebugPanel />
-        </div>
-      )}
-    </Layout>
+    {config.isDevelopment && (
+      <div className="mt-8 border-t pt-8">
+        <h3 className="text-xl font-semibold mb-4">Developer Tools</h3>
+        <DebugPanel />
+      </div>
+    )}
+
+    {/* Add this after your campaign grid */}
+    <div className="mt-12 bg-gradient-to-r from-red-600 to-rose-500 dark:from-red-700 dark:to-rose-600 text-white rounded-xl p-8 text-center">
+      <h3 className="text-2xl font-bold mb-3">Ready to Start Your Campaign?</h3>
+      <p className="mb-6 max-w-xl mx-auto">
+        Create a campaign, connect it with an AR filter, and start making a difference today.
+      </p>
+      <Link to="/create-campaign">
+        <button className="bg-white text-red-600 font-medium px-6 py-3 rounded-lg hover:bg-red-50 transition-colors">
+          Start Your Campaign
+        </button>
+      </Link>
+    </div>
+  </Layout>
   );
 };
 

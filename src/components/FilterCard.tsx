@@ -31,7 +31,7 @@ const FilterCard: React.FC<FilterCardProps> = ({ filter }) => {
           className="w-full h-full object-cover"
         />
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-          <span className="px-2 py-1 bg-orange-500 text-white text-xs rounded-full">
+          <span className="px-2 py-1 bg-red-600 text-white text-xs rounded-full">
             {category}
           </span>
         </div>
@@ -53,7 +53,7 @@ const FilterCard: React.FC<FilterCardProps> = ({ filter }) => {
             </div>
           </div>
           
-          <button className="bg-gradient-to-r from-orange-500 to-lime-500 hover:from-orange-600 hover:to-lime-600 text-white px-4 py-2 rounded-lg transform transition hover:scale-105">
+          <button className="bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-700 hover:to-rose-600 text-white px-4 py-2 rounded-lg transform transition hover:scale-105">
             Try Filter
           </button>
         </div>

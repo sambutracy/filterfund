@@ -6,6 +6,7 @@ import { PolkadotService } from "../services/polkadot-service";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { usePrivy } from '@privy-io/react-auth';
 import Notification from "../components/Notification";
+import { debounce } from '../utils/debounce';
 
 // Configure logging for debugging
 const ENABLE_DEBUG_LOGGING = true;
@@ -273,9 +274,22 @@ const CreateCampaign: React.FC = () => {
     return true;
   };
 
+  const [localDescription, setLocalDescription] = useState(form.description);
+  const debouncedSetDescription = React.useMemo(
+    () => debounce((value: string) => setForm(prev => ({ ...prev, description: value })), 300),
+    []
+  );
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    // For UI feedback, update a local state immediately
+    setLocalDescription(e.target.value);
+    // For the actual form state update, use debounced function
+    debouncedSetDescription(e.target.value);
+  };
+
   return (
     <Layout>
-      <div className="text-3xl font-bold text-orange-600 dark:text-orange-400 mb-6 text-center">
+      <div className="text-3xl font-bold text-red-600 dark:text-red-500 mb-6 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -334,8 +348,8 @@ const CreateCampaign: React.FC = () => {
           <textarea
             className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg h-32 dark:bg-gray-700 dark:text-gray-200"
             placeholder="Tell people about your campaign and why they should support it"
-            value={form.description}
-            onChange={(e) => handleFormFieldChange("description", e)}
+            value={localDescription}
+            onChange={handleChange}
           />
         </div>
 
@@ -469,7 +483,7 @@ const CreateCampaign: React.FC = () => {
               <div className="flex items-center">
                 <label
                   htmlFor="main-image-upload"
-                  className="cursor-pointer bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-800 dark:text-orange-200 px-4 py-2 rounded-lg"
+                  className="cursor-pointer bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-800 dark:text-red-200 px-4 py-2 rounded-lg"
                 >
                   Choose Image
                   <input
@@ -549,7 +563,7 @@ const CreateCampaign: React.FC = () => {
 
               <label
                 htmlFor="filter-image-upload"
-                className="cursor-pointer bg-lime-100 hover:bg-lime-200 dark:bg-lime-900 dark:hover:bg-lime-800 text-lime-800 dark:text-lime-200 px-4 py-2 rounded-lg"
+                className="cursor-pointer bg-rose-100 hover:bg-rose-200 dark:bg-rose-900 dark:hover:bg-rose-800 text-rose-800 dark:text-rose-200 px-4 py-2 rounded-lg"
               >
                 Choose QR Code
                 <input
@@ -637,7 +651,7 @@ const CreateCampaign: React.FC = () => {
         <div className="flex justify-center mt-8">
           <button
             type="submit"
-            className="px-8 py-3 bg-gradient-to-r from-orange-500 to-lime-500 hover:from-orange-600 hover:to-lime-600 text-white rounded-lg font-medium text-lg shadow-lg transform transition hover:scale-105 disabled:opacity-70"
+            className="px-8 py-3 bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-700 hover:to-rose-600 text-white rounded-lg font-medium text-lg shadow-lg transform transition hover:scale-105 disabled:opacity-70"
             disabled={isLoading}
           >
             {isLoading ? (

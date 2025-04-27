@@ -35,10 +35,10 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="bg-gradient-to-r from-orange-500 to-lime-500 dark:from-orange-600 dark:to-lime-600 text-white px-4 md:px-8 py-4 fixed w-full top-0 z-50 backdrop-blur-sm bg-opacity-90">
+    <header className="bg-gradient-to-r from-red-600 to-rose-600 dark:from-red-700 dark:to-rose-700 text-white px-4 md:px-8 py-4 fixed w-full top-0 z-50 backdrop-blur-sm bg-opacity-90">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         {/* Logo */}
-        <Link to={authenticated ? "/home" : "/"} className="text-2xl md:text-3xl font-bold hover:text-orange-100 transition-colors">
+        <Link to={authenticated ? "/home" : "/"} className="text-2xl md:text-3xl font-bold hover:text-red-100 transition-colors">
           FilterFund
         </Link>
 
@@ -59,7 +59,7 @@ const Navbar: React.FC = () => {
             <Link
               key={link.path}
               to={link.path}
-              className={`hover:text-orange-100 transition-colors ${
+              className={`hover:text-red-100 transition-colors ${
                 location.pathname === link.path ? 'text-white font-semibold' : 'text-white/80'
               }`}
             >
@@ -74,7 +74,7 @@ const Navbar: React.FC = () => {
               {/* Profile Button */}
               <Link 
                 to="/profile" 
-                className="flex items-center gap-2 hover:text-orange-100 transition-colors"
+                className="flex items-center gap-2 hover:text-red-100 transition-colors"
                 title={user?.wallet?.address || 'Profile'}
               >
                 <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
@@ -94,7 +94,7 @@ const Navbar: React.FC = () => {
           ) : (
             <button 
               onClick={() => login()}
-              className="bg-white text-orange-500 px-4 py-2 rounded-lg hover:bg-orange-100 transition-colors"
+              className="bg-white text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors"
             >
               Sign In
             </button>
@@ -106,13 +106,13 @@ const Navbar: React.FC = () => {
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="absolute top-full left-0 right-0 bg-gradient-to-r from-orange-500 to-lime-500 dark:from-orange-600 dark:to-lime-600 mt-0 py-4 px-4 md:hidden"
+            className="absolute top-full left-0 right-0 bg-gradient-to-r from-red-600 to-rose-600 dark:from-red-700 dark:to-rose-700 mt-0 py-4 px-4 md:hidden"
           >
             {authenticated && navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className="block py-2 hover:text-orange-100 transition-colors"
+                className="block py-2 hover:text-red-100 transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 {link.name}
@@ -123,7 +123,7 @@ const Navbar: React.FC = () => {
               <>
                 <Link
                   to="/profile"
-                  className="block py-2 hover:text-orange-100 transition-colors"
+                  className="block py-2 hover:text-red-100 transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Profile
@@ -133,7 +133,7 @@ const Navbar: React.FC = () => {
                     handleLogout();
                     setIsMenuOpen(false);
                   }}
-                  className="block w-full text-left py-2 hover:text-orange-100 transition-colors"
+                  className="block w-full text-left py-2 hover:text-red-100 transition-colors"
                 >
                   Sign Out
                 </button>
@@ -146,7 +146,7 @@ const Navbar: React.FC = () => {
                   login();
                   setIsMenuOpen(false);
                 }}
-                className="block w-full text-left py-2 hover:text-orange-100 transition-colors"
+                className="block w-full text-left py-2 hover:text-red-100 transition-colors"
               >
                 Sign In
               </button>

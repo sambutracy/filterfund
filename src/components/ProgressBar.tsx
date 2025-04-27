@@ -1,20 +1,39 @@
 import React from 'react';
-// No need to import CSS module when using global.css
-interface ProgressBarProps {
+
+interface ProgressBarProps { 
   progress: number;
+  showLabel?: boolean;
+  className?: string;
+  height?: 'thin' | 'normal' | 'thick';
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ progress }) => {
-  // Ensure progress is between 0 and 100
-  const clampedProgress = Math.min(100, Math.max(0, progress));
+const ProgressBar: React.FC<ProgressBarProps> = ({ 
+  progress, 
+  showLabel = false,
+  className = "",
+  height = "normal"
+}) => {
+  // Ensure progress is a valid number between 0-100
+  const clampedProgress = Math.min(Math.max(0, progress), 100);
+  
+  // Map height values to CSS classes
+  const heightClass = `progress-container-${height}`;
   
   return (
-    <div className="progressContainer">
-      <div 
-        className={`progressBar progress-${clampedProgress}`}
-        role="progressbar"
-        aria-label={`${clampedProgress}% complete`}
-      ></div>
+    <div className={`progress-wrapper ${className}`}>
+      {showLabel && (
+        <div className="progress-label">
+          <span className="progress-label-collected">{clampedProgress}%</span>
+          <span className="progress-label-target">of 100%</span>
+        </div>
+      )}
+      
+      <div className={`progress-container ${heightClass}`}>
+        <div 
+          className="progress-bar"
+          style={{ width: `${clampedProgress}%` }} // Use inline style for width
+        ></div>
+      </div>
     </div>
   );
 };

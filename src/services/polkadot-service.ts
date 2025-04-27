@@ -1,6 +1,7 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { ContractPromise } from '@polkadot/api-contract';
 import { web3Accounts, web3Enable, web3FromAddress } from '@polkadot/extension-dapp';
+import { globalCache } from '../utils/cache';
 
 // Import your contract ABI (generated after building the contract)
 import contractAbi from '../contracts/filterfundnew.json';
@@ -85,6 +86,14 @@ export class PolkadotService {
   }
 
   static async getAllCampaigns(): Promise<Campaign[]> {
+    const cacheKey = 'all-campaigns';
+    const cachedData = globalCache.get<Campaign[]>(cacheKey);
+    
+    if (cachedData) {
+      console.log('Using cached campaigns data');
+      return cachedData;
+    }
+    
     try {
       const contract = await this.getContract();
       
@@ -96,10 +105,12 @@ export class PolkadotService {
       
       if (result.isOk && output) {
         // Convert the contract output to a JavaScript array
-        const campaigns = output.toHuman();
-        // Ensure campaigns is an array before formatting
-        const campaignsArray = Array.isArray(campaigns) ? campaigns : [];
-        return this.formatCampaigns(campaignsArray);
+        const outputData = output.toHuman();
+        const campaignsData = Array.isArray(outputData) ? outputData : [];
+        const campaigns = this.formatCampaigns(campaignsData);
+        // Cache for 30 seconds
+        globalCache.set(cacheKey, campaigns, 30);
+        return campaigns;
       }
       
       return [];
@@ -109,13 +120,27 @@ export class PolkadotService {
     }
   }
   
-  // Added for the filters tab
-  static async getTopCampaigns(limit: number = 5): Promise<Campaign[]> {
-    const allCampaigns = await this.getAllCampaigns();
-    // Sort by amount collected (descending) and take the top N
-    return allCampaigns
-      .sort((a, b) => b.amountCollected - a.amountCollected)
-      .slice(0, limit);
+  static async getTopCampaigns(limit: number): Promise<Campaign[]> {
+    try {
+      const allCampaigns = await this.getAllCampaigns();
+      return allCampaigns
+        .sort((a, b) => Number(b.amountCollected) - Number(a.amountCollected))
+        .slice(0, limit);
+    } catch (error) {
+      console.error("Error getting top campaigns:", error);
+      throw error;
+    }
+  }
+  
+  static async getAllFilters(): Promise<Filter[]> {
+    try {
+      const campaigns = await this.getAllCampaigns();
+      // Extract and return filters from campaigns
+      return campaigns.map(campaign => campaign.filter);
+    } catch (error) {
+      console.error("Error getting all filters:", error);
+      throw error;
+    }
   }
 
   static async getCampaign(id: string): Promise<Campaign | null> {
