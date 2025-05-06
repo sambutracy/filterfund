@@ -7,16 +7,6 @@ if (typeof window !== 'undefined') {
   window.process.env = window.process.env || {};
 }
 
-// Default Polkadot endpoints
-const DEFAULT_POLKADOT_ENDPOINT = "wss://rpc.polkadot.io";
-const DEFAULT_DEVELOPMENT_ENDPOINT = "ws://127.0.0.1:9944";
-const REACT_APP_POLKADOT_ENDPOINT = "wss://shibuya-rpc.dwellir.com";
-const REACT_APP_CONTRACT_ADDRESS = "Your_Deployed_Contract_Address";
-const REACT_APP_CONTRACT_ABI = "Your_Contract_ABI_JSON";
-
-// Privy authentication
-const DEFAULT_PRIVY_APP_ID = "cm7x0zd4401hgnd3c43e9kfpr";
-
 // Helper function to get value from multiple potential sources
 const getEnvValue = (keys: string[], defaultValue: string): string => {
   // Check process.env
@@ -36,26 +26,47 @@ const getEnvValue = (keys: string[], defaultValue: string): string => {
   }
   
   return defaultValue;
-}
+};
+
+// Network-specific configuration
+const NETWORK_CONFIGS = {
+  development: {
+    endpoint: "ws://127.0.0.1:9944",
+    contractAddress: "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM"
+  },
+  shibuya: {
+    endpoint: getEnvValue(['REACT_APP_SHIBUYA_ENDPOINT'], "wss://shibuya-rpc.dwellir.com"),
+    contractAddress: getEnvValue(['REACT_APP_SHIBUYA_CONTRACT_ADDRESS'], "YjRXP44Yc5AhuRgKo4KKWb3grvxfDsufiEpXgACrrNZDyrL")
+  },
+  polkadot: {
+    endpoint: "wss://rpc.polkadot.io",
+    contractAddress: "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM"
+  }
+};
+
+// Get current network from environment or default to shibuya
+const currentNetwork = getEnvValue(['REACT_APP_NETWORK'], 'shibuya') as keyof typeof NETWORK_CONFIGS;
 
 // Export configuration
 export const config = {
-  // Add Polkadot config
-  polkadotEndpoint: getEnvValue(
-    ['REACT_APP_POLKADOT_ENDPOINT'], 
-    process.env.NODE_ENV === 'development' ? DEFAULT_DEVELOPMENT_ENDPOINT : DEFAULT_POLKADOT_ENDPOINT
-  ),
+  // Use network-specific config
+  polkadotEndpoint: NETWORK_CONFIGS[currentNetwork]?.endpoint,
+  contractAddress: NETWORK_CONFIGS[currentNetwork]?.contractAddress,
+  
+  // Add Pinata JWT
+  pinataJwt: getEnvValue(['REACT_APP_PINATA_JWT'], ""),
   
   // Keep Privy auth
-  privyAppId: getEnvValue(['REACT_APP_PRIVY_APP_ID'], DEFAULT_PRIVY_APP_ID),
+  privyAppId: getEnvValue(['REACT_APP_PRIVY_APP_ID'], ""),
   
+  // Other config values
   isDevelopment: process.env.NODE_ENV !== 'production',
+  network: currentNetwork
 };
 
 // Make environment config available globally
 if (typeof window !== 'undefined') {
-  // Add a global config object for easier debugging
-  (window as any).IC_CONFIG = config;
+  (window as any).APP_CONFIG = config;
 }
 
 export default config;
