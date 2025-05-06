@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
@@ -43,9 +43,23 @@ const CreateCampaign: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [notificationVisible, setNotificationVisible] = useState(false);
 
-  // File references
-  const mainImageFileRef = useRef<HTMLInputElement>(null);
-  const filterImageFileRef = useRef<HTMLInputElement>(null);
+  // File state variables
+  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
+  const [filterImageFile, setFilterImageFile] = useState<File | null>(null);
+
+  // Upload progress state
+  const [mainImageUploadProgress, setMainImageUploadProgress] = useState(0);
+  const [filterImageUploadProgress, setFilterImageUploadProgress] = useState(0);
+
+  // Add this to actually use the progress indicators
+  const UploadProgress = ({ progress }: { progress: number }) => (
+    <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+      <div 
+        className={`bg-red-600 h-2.5 rounded-full w-[${progress}%]`}
+      ></div>
+      <span className="text-xs text-gray-500">{progress}% uploaded</span>
+    </div>
+  );
 
   // Form state
   const [form, setForm] = useState({
@@ -55,10 +69,8 @@ const CreateCampaign: React.FC = () => {
     target: "",
     deadline: "",
     mainImage: "",
-    mainImageFile: null as File | null,
     mainImagePreview: "",
     filterImage: "",
-    filterImageFile: null as File | null,
     filterImagePreview: "",
     category: "Education",
     filterPlatform: "Snapchat",
@@ -66,6 +78,10 @@ const CreateCampaign: React.FC = () => {
     filterType: "Face Filter",
     filterInstructions: "",
   });
+
+  // Add a state for email
+  const [email, setEmail] = useState<string>('');
+  const [showEmailPrompt, setShowEmailPrompt] = useState<boolean>(false);
 
   // Handle form field changes
   const handleFormFieldChange = (
@@ -78,24 +94,15 @@ const CreateCampaign: React.FC = () => {
   };
 
   // Handle file input changes
-  const handleFileChange = (
-    fieldName: "mainImageFile" | "filterImageFile",
-    previewField: "mainImagePreview" | "filterImagePreview",
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+      setMainImageFile(e.target.files[0]);
+    }
+  };
 
-      // Create local file preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setForm((prevForm) => ({
-          ...prevForm,
-          [fieldName]: file,
-          [previewField]: reader.result as string,
-        }));
-      };
-      reader.readAsDataURL(file);
+  const handleFilterImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFilterImageFile(e.target.files[0]);
     }
   };
 
@@ -103,25 +110,39 @@ const CreateCampaign: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate form
-    if (!validateForm()) {
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
 
     try {
+      // Initialize storage first
+      try {
+        await PolkadotService.ensureW3Storage(user?.email?.address || email);
+      } catch (error) {
+        if (!user?.email?.address && !email) {
+          setShowEmailPrompt(true);
+          setIsLoading(false);
+          return;
+        }
+        throw error;
+      }
+
+      // Validate form
+      if (!validateForm()) {
+        return;
+      }
+
       // Step 1: Upload main image if provided
       let mainImageUrl = form.mainImage;
-      if (form.mainImageFile) {
+      if (mainImageFile) {
         logDebug("Uploading main image");
         try {
+          setMainImageUploadProgress(10); // Start progress
           const result = await PolkadotService.uploadAsset(
-            form.mainImageFile,
+            mainImageFile,
             "MainImage"
           );
+          setMainImageUploadProgress(100); // Complete progress
           if (typeof result === "string") {
             mainImageUrl = result;
             logDebug("Main image uploaded successfully:", mainImageUrl);
@@ -129,6 +150,7 @@ const CreateCampaign: React.FC = () => {
             throw new Error("Failed to upload main image");
           }
         } catch (err) {
+          setMainImageUploadProgress(0);
           logDebug("Main image upload failed:", err);
           throw new Error("Failed to upload main image. Please try again or provide an image URL instead.");
         }
@@ -136,13 +158,15 @@ const CreateCampaign: React.FC = () => {
 
       // Step 2: Upload filter image if provided
       let filterImageUrl = form.filterImage;
-      if (form.filterImageFile) {
+      if (filterImageFile) {
         logDebug("Uploading filter image");
         try {
+          setFilterImageUploadProgress(10); // Start progress
           const result = await PolkadotService.uploadAsset(
-            form.filterImageFile,
+            filterImageFile,
             "FilterImage"
           );
+          setFilterImageUploadProgress(100); // Complete progress
           if (typeof result === "string") {
             filterImageUrl = result;
             logDebug("Filter image uploaded successfully:", filterImageUrl);
@@ -150,6 +174,7 @@ const CreateCampaign: React.FC = () => {
             throw new Error("Failed to upload filter image");
           }
         } catch (err) {
+          setFilterImageUploadProgress(0);
           logDebug("Filter image upload failed:", err);
           throw new Error("Failed to upload filter image. Please try again or provide an image URL instead.");
         }
@@ -259,7 +284,7 @@ const CreateCampaign: React.FC = () => {
       return false;
     }
 
-    if (!form.mainImage && !form.mainImageFile) {
+    if (!form.mainImage && !mainImageFile) {
       setError("Please provide a main campaign image");
       setNotificationVisible(true);
       return false;
@@ -286,6 +311,82 @@ const CreateCampaign: React.FC = () => {
     // For the actual form state update, use debounced function
     debouncedSetDescription(e.target.value);
   };
+
+  // Add an email prompt component
+  const EmailPrompt = () => {
+    // Local state for email validation
+    const [isValidEmail, setIsValidEmail] = useState(false);
+    
+    // Email validation function
+    const validateEmail = (email: string) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
+    };
+    
+    // Handle email input change with validation
+    const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newEmail = e.target.value;
+      setEmail(newEmail);
+      setIsValidEmail(validateEmail(newEmail));
+    };
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-md w-full">
+          <h2 className="text-xl font-bold mb-4">Email Required</h2>
+          <p className="mb-4">
+            We need your email to set up secure storage for your campaign images.
+          </p>
+          <div className="mb-4">
+            <input
+              type="email"
+              value={email}
+              onChange={handleEmailChange}
+              className={`w-full p-2 border rounded ${
+                email && !isValidEmail ? 'border-red-500' : 'border-gray-300'
+              } focus:outline-none focus:ring-2 focus:ring-red-500`}
+              placeholder="your@email.com"
+              autoFocus
+            />
+            {email && !isValidEmail && (
+              <p className="text-red-500 text-sm mt-1">Please enter a valid email address</p>
+            )}
+          </div>
+          <div className="flex justify-end space-x-2">
+            <button
+              onClick={() => setShowEmailPrompt(false)}
+              className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded transition-colors"
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                if (isValidEmail) {
+                  setShowEmailPrompt(false);
+                  handleSubmit(new Event('submit') as any);
+                }
+              }}
+              className={`px-4 py-2 bg-red-600 text-white rounded transition-colors ${
+                isValidEmail ? 'hover:bg-red-700' : 'opacity-50 cursor-not-allowed'
+              }`}
+              disabled={!isValidEmail}
+              type="button"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  useEffect(() => {
+    // Clean up WebSocket connections when component unmounts
+    return () => {
+      PolkadotService.disconnect();
+    };
+  }, []);
 
   return (
     <Layout>
@@ -441,78 +542,19 @@ const CreateCampaign: React.FC = () => {
           </label>
           <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6">
             <div className="flex flex-col items-center">
-              {form.mainImagePreview ? (
-                <div className="mb-4 relative">
-                  <img
-                    src={form.mainImagePreview}
-                    alt="Campaign preview"
-                    className="max-h-48 max-w-full rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                    onClick={() =>
-                      setForm({
-                        ...form,
-                        mainImageFile: null,
-                        mainImagePreview: "",
-                      })
-                    }
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : (
-                <div className="text-center mb-4">
-                  <svg
-                    className="mx-auto h-12 w-12 text-gray-400"
-                    stroke="currentColor"
-                    fill="none"
-                    viewBox="0 0 48 48"
-                  >
-                    <path
-                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-              )}
-
-              <div className="flex items-center">
-                <label
-                  htmlFor="main-image-upload"
-                  className="cursor-pointer bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-800 dark:text-red-200 px-4 py-2 rounded-lg"
-                >
-                  Choose Image
-                  <input
-                    id="main-image-upload"
-                    type="file"
-                    ref={mainImageFileRef}
-                    accept="image/*"
-                    className="hidden"
-                    title="Upload campaign main image"
-                    onChange={(e) =>
-                      handleFileChange("mainImageFile", "mainImagePreview", e)
-                    }
-                  />
-                </label>
-
-                <div className="ml-4 text-center text-gray-500 dark:text-gray-400 text-sm">
-                  or provide a URL:
-                </div>
-              </div>
-
               <input
-                type="text"
-                className="w-full mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-                placeholder="https://example.com/image.jpg"
-                value={form.mainImage}
-                onChange={(e) => handleFormFieldChange("mainImage", e)}
+                type="file"
+                accept="image/*"
+                onChange={handleMainImageChange}
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
+                title="Upload campaign main image"
+                placeholder="Choose a main image for your campaign"
               />
             </div>
           </div>
+          {mainImageUploadProgress > 0 && mainImageUploadProgress < 100 && (
+            <UploadProgress progress={mainImageUploadProgress} />
+          )}
         </div>
 
         {/* Filter QR Code Image */}
@@ -520,78 +562,17 @@ const CreateCampaign: React.FC = () => {
           <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
             Filter QR Code Image
           </label>
-          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6">
-            <div className="flex flex-col items-center">
-              {form.filterImagePreview ? (
-                <div className="mb-4 relative">
-                  <img
-                    src={form.filterImagePreview}
-                    alt="Filter QR code preview"
-                    className="max-h-48 max-w-full rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                    onClick={() =>
-                      setForm({
-                        ...form,
-                        filterImageFile: null,
-                        filterImagePreview: "",
-                      })
-                    }
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : (
-                <div className="text-center mb-4">
-                  <svg
-                    className="mx-auto h-12 w-12 text-gray-400"
-                    stroke="currentColor"
-                    fill="none"
-                    viewBox="0 0 48 48"
-                  >
-                    <path
-                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-              )}
-
-              <label
-                htmlFor="filter-image-upload"
-                className="cursor-pointer bg-rose-100 hover:bg-rose-200 dark:bg-rose-900 dark:hover:bg-rose-800 text-rose-800 dark:text-rose-200 px-4 py-2 rounded-lg"
-              >
-                Choose QR Code
-                <input
-                  id="filter-image-upload"
-                  type="file"
-                  ref={filterImageFileRef}
-                  accept="image/*"
-                  className="hidden"
-                  title="Upload filter QR code image"
-                  onChange={(e) =>
-                    handleFileChange("filterImageFile", "filterImagePreview", e)
-                  }
-                />
-              </label>
-
-              <div className="ml-4 text-center text-gray-500 dark:text-gray-400 text-sm mt-2">
-                or provide a URL:
-              </div>
-
-              <input
-                type="text"
-                className="w-full mt-4 p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-                placeholder="https://example.com/qrcode.jpg"
-                value={form.filterImage}
-                onChange={(e) => handleFormFieldChange("filterImage", e)}
-              />
-            </div>
-          </div>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFilterImageChange}
+            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
+            title="Upload filter QR code image"
+            placeholder="Choose a QR code image for your filter"
+          />
+          {filterImageUploadProgress > 0 && filterImageUploadProgress < 100 && (
+            <UploadProgress progress={filterImageUploadProgress} />
+          )}
         </div>
 
         {/* Filter details */}
@@ -665,6 +646,8 @@ const CreateCampaign: React.FC = () => {
           </button>
         </div>
       </form>
+
+      {showEmailPrompt && <EmailPrompt />}
     </Layout>
   );
 };

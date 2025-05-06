@@ -24,3 +24,9 @@ std = [
 ]
 ink-as-dependency = []
 e2e-tests = []
+
+[profile.release]
+opt-level = "z"  # Optimize for size
+lto = true       # Link-time optimization
+codegen-units = 1
+panic = "abort"  # Smaller code size than unwinding

@@ -44,3 +44,4 @@ yarn-error.log*
 .parcel-cache/
 .npm
 .eslintcache
+src/config/env.ts

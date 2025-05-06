@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ProgressBar from '../components/ProgressBar'; // Add this import
-import { PolkadotService, Filter, Campaign } from '../services/polkadot-service';
+import { PolkadotService, Campaign } from '../services/polkadot-service';
 import DebugPanel from '../components/DebugPanel';
 import { calculateProgress } from '../utils/calculations';
 import SkeletonCard from '../components/SkeletonCard';
@@ -225,42 +225,16 @@ const HomePage: React.FC = () => {
 
   // Fetch data based on active tab
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        logDebug('Fetching campaigns...');
-        const fetchedCampaigns = await PolkadotService.getAllCampaigns();
-        setCampaigns(fetchedCampaigns);
-        
-        logDebug('Fetching filters...');
-        const fetchedFilters = await PolkadotService.getAllFilters();
-
-        // Map the Filter objects to FilterCardData objects
-        const mappedFilters = fetchedFilters.map((filter, index) => ({
-          id: `filter-${index}-${Math.random().toString(36).substr(2, 9)}`, // Generate a unique ID
-          title: filter.filterUrl.split('/').pop() || 'Unnamed Filter', // Use the last part of URL as name
-          image: '/placeholder-filter.jpg', // Use a placeholder image
-          filterUrl: filter.filterUrl,
-          category: 'General',
-          creator: 'Unknown Creator',
-          platform: filter.platform || 'Unknown',
-          instructions: filter.instructions || '',
-          filterType: filter.filterType
-        }));
-        setFilters(mappedFilters);
-        
-        setError(null);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setError('Failed to load data. Please try again.');
-      } finally {
-        setIsLoading(false);
-        setIsInitialLoad(false);
-      }
+    const loadData = async () => {
+      await fetchCampaigns();
+      await fetchFilters();
+      setIsLoading(false);
+      setIsInitialLoad(false);
     };
 
-    fetchData();
-  }, []);
+    setIsLoading(true);
+    loadData();
+  }, [fetchCampaigns, fetchFilters]); // Add missing dependencies
 
   // Add this inside your component, before rendering
   // Sort campaigns to show the most funded ones first

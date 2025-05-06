@@ -14,11 +14,13 @@ const DebugPanel: React.FC = () => {
 
   const testConnection = async () => {
     setLoading(true);
+    let api: ApiPromise | null = null;
+
     try {
       console.log('Testing connection to:', endpoint);
       
       const wsProvider = new WsProvider(endpoint);
-      const api = await ApiPromise.create({ provider: wsProvider });
+      api = await ApiPromise.create({ provider: wsProvider });
       
       const [chain, nodeName, nodeVersion] = await Promise.all([
         api.rpc.system.chain(),
@@ -37,8 +39,6 @@ const DebugPanel: React.FC = () => {
           [...modules.slice(0, 20), `...and ${modules.length - 20} more`] : 
           modules
       });
-      
-      await api.disconnect();
     } catch (error) {
       console.error('Connection test failed:', error);
       setDebugResult({
@@ -46,6 +46,11 @@ const DebugPanel: React.FC = () => {
         error: error instanceof Error ? error.message : String(error)
       });
     } finally {
+      if (api) {
+        try {
+          await api.disconnect();
+        } catch {}
+      }
       setLoading(false);
     }
   };
