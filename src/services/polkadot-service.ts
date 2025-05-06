@@ -3,6 +3,7 @@ import { ContractPromise } from '@polkadot/api-contract';
 import { web3Accounts, web3Enable, web3FromAddress } from '@polkadot/extension-dapp';
 import { globalCache } from '../utils/cache';
 import { config } from '../config/env';
+import axios from 'axios';
 
 // Import your contract ABI
 import contractAbi from '../contracts/filterfundnew.json';
@@ -136,10 +137,10 @@ export class PolkadotService {
     filter: Filter
   ): Promise<string> {
     try {
-      // CRITICAL FIX 1: Use a single API connection
-      if (this.api && !this.api.isConnected) {
-        await this.api.disconnect();
-        this.api = null;
+      // Ensure we have a valid connection before proceeding
+      const api = await this.connectToPolkadot();
+      if (!api.isConnected) {
+        throw new Error('Not connected to Polkadot network');
       }
       
       const accounts = await this.connectWallet();
@@ -149,59 +150,58 @@ export class PolkadotService {
       const accountAddress = accounts[0].address;
       const injector = await web3FromAddress(accountAddress);
 
-      // CRITICAL FIX 2: Create proper numeric values for blockchain
-      // Target MUST be a simple number, not BigInt for proper encoding
-      const targetValue = Math.min(Math.max(1, Number(target)), 1000000);
-      // Target in Planck (smallest unit) - NO BIGINT to avoid encoding issues
-      const finalTarget = Math.floor(targetValue * 10**12);
+      // Validate and format target amount (minimum 1 SBY)
+      const MIN_TARGET = 1_000_000_000_000; // 1 SBY in planck units
+      const targetValue = Math.max(MIN_TARGET, Math.floor(Number(target) * 10**12));
       
-      // CRITICAL FIX 3: Correct deadline format
-      // Blockchain expects milliseconds since epoch as a simple number
+      // Validate and format deadline
       const now = Date.now();
       const oneYearFromNow = now + (365 * 24 * 60 * 60 * 1000);
-      const validDeadline = Math.min(Math.max(now + 86400000, deadline), oneYearFromNow);
+      const validDeadline = Math.max(now + 86400000, Math.min(deadline, oneYearFromNow));
       
-      // CRITICAL FIX 4: Sanitize string inputs to reasonable lengths
+      // Sanitize string inputs
       const sanitizedTitle = title.substring(0, 50).trim();
       const sanitizedDescription = description.substring(0, 500).trim();
       const sanitizedMainImage = mainImage.substring(0, 200).trim();
       const sanitizedFilterImage = filterImage.substring(0, 200).trim();
       const sanitizedCreatorName = creatorName.substring(0, 50).trim();
+      const sanitizedCategory = category.substring(0, 50).trim();
       
-      // This logs to verify our parameters
-      console.log('Creating campaign with fixed parameters:', {
+      // Log the parameters for debugging
+      console.log('Creating campaign with parameters:', {
         title: sanitizedTitle,
         description: `${sanitizedDescription.length} chars`,
-        mainImage: `${sanitizedMainImage.length} chars`,
-        filterImage: `${sanitizedFilterImage.length} chars`,
-        category,
-        finalTarget: finalTarget.toString(),
-        validDeadline: validDeadline.toString()
+        mainImage: sanitizedMainImage,
+        filterImage: sanitizedFilterImage,
+        category: sanitizedCategory,
+        target: targetValue.toString(),
+        deadline: validDeadline.toString(),
+        filter: {
+          platform: filter.platform,
+          filterType: filter.filterType,
+          instructions: filter.instructions,
+          filterUrl: filter.filterUrl
+        }
       });
       
-      // CRITICAL FIX 5: Send proper snake_case fields to match contract expectations
       const tx = await contract.tx.createCampaign(
-        { 
-          gasLimit: 200000000,  // Reduced from 300M to avoid excessive gas issues
-          storageDepositLimit: null  // Important - makes storage limit unlimited
-        },
+        { gasLimit: 200000000, storageDepositLimit: null },
         sanitizedTitle,
         sanitizedDescription,
         sanitizedMainImage,
         sanitizedFilterImage,
-        category,
-        finalTarget,  // IMPORTANT: sending as number, not BigInt or string
-        validDeadline,  // IMPORTANT: sending as number, not string
+        sanitizedCategory,
+        targetValue,
+        validDeadline,
         {
           platform: filter.platform,
-          filter_type: filter.filterType,  // Explicit snake_case mapping
+          filter_type: filter.filterType,
           instructions: filter.instructions,
-          filter_url: filter.filterUrl      // Explicit snake_case mapping
+          filter_url: filter.filterUrl
         },
         sanitizedCreatorName
       );
       
-      // CRITICAL FIX 6: Better transaction handling with proper cleanup
       return new Promise((resolve, reject) => {
         let unsubscribe: (() => void) | null = null;
         let hasCompleted = false;
@@ -223,12 +223,11 @@ export class PolkadotService {
               return;
             }
             
-            // Success states
             if ((result.status.isInBlock || result.status.isFinalized) && !hasCompleted) {
               hasCompleted = true;
               console.log(`Transaction included in block: ${result.status.isInBlock ? result.status.asInBlock.toString() : result.status.asFinalized.toString()}`);
               if (unsubscribe) unsubscribe();
-              resolve("0"); // We're just returning a placeholder ID for now
+              resolve("0");
             }
           }
         ).then(unsub => {
@@ -313,26 +312,28 @@ export class PolkadotService {
 
   static async uploadAsset(file: File, type: string): Promise<string> {
     try {
-      // Simple implementation using Pinata instead of W3
+      // Use axios for Pinata upload
       const formData = new FormData();
       formData.append('file', file);
       
-      const pinataJwt = process.env.REACT_APP_PINATA_JWT;
+      const pinataJwt = config.pinataJwt;
       if (!pinataJwt) {
         throw new Error('Pinata JWT not configured');
       }
       
-      const res = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${pinataJwt}`
-        },
-        body: formData
-      });
+      const response = await axios.post(
+        'https://api.pinata.cloud/pinning/pinFileToIPFS',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${pinataJwt}`
+          }
+        }
+      );
       
-      const data = await res.json();
-      if (data.IpfsHash) {
-        return `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`;
+      if (response.data && response.data.IpfsHash) {
+        return `https://gateway.pinata.cloud/ipfs/${response.data.IpfsHash}`;
       }
       throw new Error('Upload failed');
     } catch (error) {
