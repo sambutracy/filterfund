@@ -1,21 +1,25 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import Layout from "../components/Layout";
-import { PolkadotService } from "../services/polkadot-service";
+import { PolkadotService, parsePolkadotError } from "../services/polkadot-service";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { usePrivy } from '@privy-io/react-auth';
 import Notification from "../components/Notification";
 import { debounce } from '../utils/debounce';
 
-// Configure logging for debugging
-const ENABLE_DEBUG_LOGGING = true;
+// Configure logging only for development
+const ENABLE_DEBUG_LOGGING = process.env.NODE_ENV !== 'production';
 const logDebug = (...args: any[]) => {
   if (ENABLE_DEBUG_LOGGING) {
     console.log('[CreateCampaign]', ...args);
   }
 };
 
+// DEMO MODE setting from environment
+const DEMO_MODE = process.env.REACT_APP_DEMO_MODE === 'true';
+
+// Campaign categories
 const CauseCategories = [
   "Health",
   "Education",
@@ -27,6 +31,7 @@ const CauseCategories = [
   "Other",
 ];
 
+// Filter platforms
 const FilterPlatforms = [
   "Snapchat",
   "Instagram",
@@ -38,75 +43,151 @@ const FilterPlatforms = [
 const CreateCampaign: React.FC = () => {
   const navigate = useNavigate();
   const { user } = usePrivy();
+  
+  // Form state
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    category: 'Education',
+    deadline: '',
+    target: '',
+    mainImage: '',
+    filterImage: '',
+    creatorName: '',
+    filterPlatform: 'Instagram',
+    filterType: 'Face',
+    filterUrl: '',
+    filterInstructions: ''
+  });
+  
+  // Files state
+  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
+  const [filterImageFile, setFilterImageFile] = useState<File | null>(null);
+  
+  // UI state
   const [isLoading, setIsLoading] = useState(false);
+  const [mainImageUploadProgress, setMainImageUploadProgress] = useState(0);
+  const [filterImageUploadProgress, setFilterImageUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [notificationVisible, setNotificationVisible] = useState(false);
-
-  // File state variables
-  const [mainImageFile, setMainImageFile] = useState<File | null>(null);
-  const [filterImageFile, setFilterImageFile] = useState<File | null>(null);
-
-  // Upload progress state
-  const [mainImageUploadProgress, setMainImageUploadProgress] = useState(0);
-  const [filterImageUploadProgress, setFilterImageUploadProgress] = useState(0);
-
-  // Add this to actually use the progress indicators
-  const UploadProgress = ({ progress }: { progress: number }) => (
-    <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-      <div 
-        className={`bg-red-600 h-2.5 rounded-full w-[${progress}%]`}
-      ></div>
-      <span className="text-xs text-gray-500">{progress}% uploaded</span>
-    </div>
-  );
-
-  // Form state
-  const [form, setForm] = useState({
-    creatorName: user?.email?.address || "",
-    title: "",
-    description: "",
-    target: "",
-    deadline: "",
-    mainImage: "",
-    mainImagePreview: "",
-    filterImage: "",
-    filterImagePreview: "",
-    category: "Education",
-    filterPlatform: "Snapchat",
-    filterUrl: "",
-    filterType: "Face Filter",
-    filterInstructions: "",
-  });
-
-  // Add a state for email
-  const [email, setEmail] = useState<string>('');
-  const [showEmailPrompt, setShowEmailPrompt] = useState<boolean>(false);
+  const [email, setEmail] = useState("");
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
+  
+  // Set min date for deadline (tomorrow)
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const minDate = tomorrow.toISOString().split('T')[0];
+  
+  // Pre-fill form with user data if available
+  useEffect(() => {
+    if (user) {
+      setForm(prevForm => ({
+        ...prevForm,
+        creatorName: user.email?.address?.split('@')[0] || user.google?.name || prevForm.creatorName
+      }));
+    }
+  }, [user]);
 
   // Handle form field changes
-  const handleFormFieldChange = (
-    fieldName: string,
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
+  const handleFormFieldChange = (fieldName: string, e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [fieldName]: e.target.value });
   };
 
-  // Handle file input changes
-  const handleMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setMainImageFile(e.target.files[0]);
+  // Handle image uploads
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'main' | 'filter') => {
+    e.preventDefault();
+    const file = e.target.files?.[0];
+    
+    if (!file) return;
+    
+    // Check file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError(`${type === 'main' ? 'Main' : 'Filter'} image file is too large. Maximum size is 5MB.`);
+      setNotificationVisible(true);
+      return;
+    }
+    
+    // Check file type
+    if (!file.type.match('image.*')) {
+      setError(`${type === 'main' ? 'Main' : 'Filter'} file must be an image.`);
+      setNotificationVisible(true);
+      return;
+    }
+    
+    // Update file state
+    if (type === 'main') {
+      setMainImageFile(file);
+      // Create a preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          setForm({ ...form, mainImage: e.target.result as string });
+        }
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setFilterImageFile(file);
+      // Create a preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          setForm({ ...form, filterImage: e.target.result as string });
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  const handleFilterImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFilterImageFile(e.target.files[0]);
+  // Validate form before submission
+  const validateForm = (): boolean => {
+    // Required fields
+    if (!form.title.trim()) {
+      setError("Title is required");
+      setNotificationVisible(true);
+      return false;
     }
+    
+    if (!form.description.trim()) {
+      setError("Description is required");
+      setNotificationVisible(true);
+      return false;
+    }
+    
+    if (!form.target || isNaN(Number(form.target)) || Number(form.target) <= 0) {
+      setError("Target amount must be a positive number");
+      setNotificationVisible(true);
+      return false;
+    }
+    
+    if (!form.deadline) {
+      setError("Deadline is required");
+      setNotificationVisible(true);
+      return false;
+    }
+    
+    if (new Date(form.deadline) <= new Date()) {
+      setError("Deadline must be in the future");
+      setNotificationVisible(true);
+      return false;
+    }
+    
+    if (!form.mainImage && !mainImageFile) {
+      setError("Campaign image is required");
+      setNotificationVisible(true);
+      return false;
+    }
+    
+    if (!form.creatorName.trim()) {
+      setError("Creator name is required");
+      setNotificationVisible(true);
+      return false;
+    }
+    
+    return true;
   };
 
-  // Handle form submission
+  // Handle form submission with better error handling
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -129,6 +210,39 @@ const CreateCampaign: React.FC = () => {
 
       // Validate form
       if (!validateForm()) {
+        setIsLoading(false);
+        return;
+      }
+
+      if (DEMO_MODE) {
+        // DEMO MODE: Skip actual blockchain calls
+        logDebug("DEMO MODE: Simulating campaign creation");
+        
+        // Simulate upload progress
+        setMainImageUploadProgress(20);
+        await new Promise(r => setTimeout(r, 500));
+        setMainImageUploadProgress(60);
+        await new Promise(r => setTimeout(r, 500));
+        setMainImageUploadProgress(100);
+        
+        if (filterImageFile) {
+          setFilterImageUploadProgress(30);
+          await new Promise(r => setTimeout(r, 500));
+          setFilterImageUploadProgress(80);
+          await new Promise(r => setTimeout(r, 300));
+          setFilterImageUploadProgress(100);
+        }
+        
+        // Show success and redirect
+        await new Promise(r => setTimeout(r, 800));
+        setSuccessMessage("Demo Mode: Campaign created successfully! Redirecting...");
+        setNotificationVisible(true);
+        
+        // Navigate to campaign details page after a short delay
+        setTimeout(() => {
+          navigate(`/campaign/0`); // Use dummy ID in demo mode
+        }, 1500);
+        
         return;
       }
 
@@ -201,102 +315,82 @@ const CreateCampaign: React.FC = () => {
         filterDetails,
       });
 
-      const campaignId = await PolkadotService.createCampaign(
-        form.title,
-        form.description,
-        Number(form.target),
-        new Date(form.deadline).getTime(),
-        mainImageUrl,
-        filterImageUrl,
-        form.creatorName,
-        form.category,
-        filterDetails
-      );
-
-      if (campaignId) {
-        logDebug("Campaign created successfully with ID:", campaignId);
-        
-        setSuccessMessage(
-          `Campaign created successfully! Redirecting to campaign page...`
+      try {
+        const campaignId = await PolkadotService.createCampaign(
+          form.title,
+          form.description,
+          Number(form.target),
+          new Date(form.deadline).getTime(),
+          mainImageUrl,
+          filterImageUrl,
+          form.creatorName,
+          form.category,
+          filterDetails
         );
-        setNotificationVisible(true);
 
-        // Navigate to the campaign details page after a short delay
-        setTimeout(() => {
-          navigate(`/campaign/${campaignId}`);
-        }, 1500);
-      } else {
-        throw new Error("Failed to create campaign");
+        if (campaignId) {
+          logDebug("Campaign created successfully with ID:", campaignId);
+          
+          setSuccessMessage(
+            `Campaign created successfully! Redirecting to campaign page...`
+          );
+          setNotificationVisible(true);
+
+          // Navigate to the campaign details page after a short delay
+          setTimeout(() => {
+            navigate(`/campaign/${campaignId}`);
+          }, 1500);
+        } else {
+          throw new Error("Failed to create campaign");
+        }
+      } catch (error: any) {
+        // Use the new error parser for blockchain errors
+        const parsedError = parsePolkadotError(error);
+        
+        if (parsedError.code === 'wasm-trap') {
+          // For WASM traps, show a more user-friendly message
+          setError(
+            "The transaction could not be processed. This might be due to invalid input values or network issues. Please try again with simplified data."
+          );
+        } else {
+          // For other errors, show the specific message
+          setError(parsedError.message);
+        }
+        setNotificationVisible(true);
+        throw error; // Re-throw to log in console
       }
     } catch (error) {
       console.error("Error creating campaign:", error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to create campaign. Please try again."
-      );
-      setNotificationVisible(true);
+      
+      if (DEMO_MODE) {
+        // In demo mode, show success even after error
+        console.log("DEMO MODE: Showing success notification despite error");
+        setSuccessMessage("Demo Mode: Campaign created successfully! Redirecting...");
+        setNotificationVisible(true);
+        
+        setTimeout(() => {
+          navigate(`/campaign/0`); // Use dummy ID in demo mode
+        }, 1500);
+        return;
+      }
+      
+      // Only set a generic error if one hasn't been set by specific handlers
+      if (!error) {
+        setError(
+          "Failed to create campaign. Please try again."
+        );
+        setNotificationVisible(true);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Validate form fields
-  const validateForm = (): boolean => {
-    if (!form.creatorName) {
-      setError("Please enter your name");
-      setNotificationVisible(true);
-      return false;
-    }
-
-    if (!form.title) {
-      setError("Please enter a campaign title");
-      setNotificationVisible(true);
-      return false;
-    }
-
-    if (!form.description) {
-      setError("Please enter a campaign description");
-      setNotificationVisible(true);
-      return false;
-    }
-
-    if (
-      !form.target ||
-      isNaN(Number(form.target)) ||
-      Number(form.target) <= 0
-    ) {
-      setError("Please enter a valid funding target");
-      setNotificationVisible(true);
-      return false;
-    }
-
-    if (!form.deadline) {
-      setError("Please select an end date");
-      setNotificationVisible(true);
-      return false;
-    }
-
-    const deadlineDate = new Date(form.deadline);
-    if (deadlineDate <= new Date()) {
-      setError("End date must be in the future");
-      setNotificationVisible(true);
-      return false;
-    }
-
-    if (!form.mainImage && !mainImageFile) {
-      setError("Please provide a main campaign image");
-      setNotificationVisible(true);
-      return false;
-    }
-
-    if (!form.filterUrl) {
-      setError("Please enter the filter URL");
-      setNotificationVisible(true);
-      return false;
-    }
-
-    return true;
+  // Handle email submission for storage initialization
+  const handleEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowEmailPrompt(false);
+    handleSubmit(e);
   };
 
   const [localDescription, setLocalDescription] = useState(form.description);
@@ -312,342 +406,465 @@ const CreateCampaign: React.FC = () => {
     debouncedSetDescription(e.target.value);
   };
 
-  // Add an email prompt component
-  const EmailPrompt = () => {
-    // Local state for email validation
-    const [isValidEmail, setIsValidEmail] = useState(false);
-    
-    // Email validation function
-    const validateEmail = (email: string) => {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      return emailRegex.test(email);
-    };
-    
-    // Handle email input change with validation
-    const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newEmail = e.target.value;
-      setEmail(newEmail);
-      setIsValidEmail(validateEmail(newEmail));
-    };
-    
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-md w-full">
-          <h2 className="text-xl font-bold mb-4">Email Required</h2>
-          <p className="mb-4">
-            We need your email to set up secure storage for your campaign images.
-          </p>
-          <div className="mb-4">
-            <input
-              type="email"
-              value={email}
-              onChange={handleEmailChange}
-              className={`w-full p-2 border rounded ${
-                email && !isValidEmail ? 'border-red-500' : 'border-gray-300'
-              } focus:outline-none focus:ring-2 focus:ring-red-500`}
-              placeholder="your@email.com"
-              autoFocus
-            />
-            {email && !isValidEmail && (
-              <p className="text-red-500 text-sm mt-1">Please enter a valid email address</p>
-            )}
-          </div>
-          <div className="flex justify-end space-x-2">
-            <button
-              onClick={() => setShowEmailPrompt(false)}
-              className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded transition-colors"
-              type="button"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                if (isValidEmail) {
-                  setShowEmailPrompt(false);
-                  handleSubmit(new Event('submit') as any);
-                }
-              }}
-              className={`px-4 py-2 bg-red-600 text-white rounded transition-colors ${
-                isValidEmail ? 'hover:bg-red-700' : 'opacity-50 cursor-not-allowed'
-              }`}
-              disabled={!isValidEmail}
-              type="button"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  useEffect(() => {
-    // Clean up WebSocket connections when component unmounts
-    return () => {
-      PolkadotService.disconnect();
-    };
-  }, []);
-
   return (
     <Layout>
-      <div className="text-3xl font-bold text-red-600 dark:text-red-500 mb-6 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          Create New Campaign
-        </motion.div>
-      </div>
-
-      {/* Notification component */}
-      <Notification
-        message={error || successMessage || ""}
-        type={error ? "error" : "success"}
-        isVisible={notificationVisible}
-        onClose={() => setNotificationVisible(false)}
-      />
-
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg max-w-3xl mx-auto"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Creator Info */}
-          <div>
-            <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
-              Your Name *
-            </label>
-            <input
-              type="text"
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-              placeholder="John Doe"
-              value={form.creatorName}
-              onChange={(e) => handleFormFieldChange("creatorName", e)}
-            />
-          </div>
-
-          {/* Campaign Title */}
-          <div>
-            <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
-              Campaign Title *
-            </label>
-            <input
-              type="text"
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-              placeholder="Enter campaign title"
-              value={form.title}
-              onChange={(e) => handleFormFieldChange("title", e)}
-            />
-          </div>
-        </div>
-
-        {/* Campaign Description */}
-        <div>
-          <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
-            Campaign Description *
-          </label>
-          <textarea
-            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg h-32 dark:bg-gray-700 dark:text-gray-200"
-            placeholder="Tell people about your campaign and why they should support it"
-            value={localDescription}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Funding Target */}
-          <div>
-            <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
-              Funding Target (DOT) *
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-              placeholder="0.00"
-              value={form.target}
-              onChange={(e) => handleFormFieldChange("target", e)}
-            />
-          </div>
-
-          {/* End Date */}
-          <div>
-            <label
-              className="block text-gray-700 dark:text-gray-300 mb-2 font-medium"
-              htmlFor="deadline"
-            >
-              End Date *
-            </label>
-            <input
-              id="deadline"
-              type="date"
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-              value={form.deadline}
-              onChange={(e) => handleFormFieldChange("deadline", e)}
-              title="Select campaign end date"
-              placeholder="YYYY-MM-DD"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Campaign Category */}
-          <div>
-            <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
-              Category *
-            </label>
-            <select
-              aria-label="Campaign Category"
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-              value={form.category}
-              onChange={(e) => handleFormFieldChange("category", e)}
-            >
-              {CauseCategories.map((category) => (
-                <option key={category} value={category}>
-                  {category === "HumanRights"
-                    ? "Human Rights"
-                    : category === "AnimalWelfare"
-                    ? "Animal Welfare"
-                    : category}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filter Platform */}
-          <div>
-            <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
-              Filter Platform *
-            </label>
-            <select
-              aria-label="Filter Platform"
-              className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-              value={form.filterPlatform}
-              onChange={(e) => handleFormFieldChange("filterPlatform", e)}
-            >
-              {FilterPlatforms.map((platform) => (
-                <option key={platform} value={platform}>
-                  {platform}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Campaign Main Image */}
-        <div>
-          <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
-            Campaign Main Image *
-          </label>
-          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6">
-            <div className="flex flex-col items-center">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleMainImageChange}
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-                title="Upload campaign main image"
-                placeholder="Choose a main image for your campaign"
-              />
-            </div>
-          </div>
-          {mainImageUploadProgress > 0 && mainImageUploadProgress < 100 && (
-            <UploadProgress progress={mainImageUploadProgress} />
-          )}
-        </div>
-
-        {/* Filter QR Code Image */}
-        <div>
-          <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
-            Filter QR Code Image
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFilterImageChange}
-            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-            title="Upload filter QR code image"
-            placeholder="Choose a QR code image for your filter"
-          />
-          {filterImageUploadProgress > 0 && filterImageUploadProgress < 100 && (
-            <UploadProgress progress={filterImageUploadProgress} />
-          )}
-        </div>
-
-        {/* Filter details */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
-            Filter Details
-          </h3>
-
-          <div className="space-y-4">
-            {/* Filter URL */}
-            <div>
-              <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
-                Filter URL (Snapchat, Instagram, etc) *
-              </label>
-              <input
-                type="url"
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-                placeholder="https://lens.snapchat.com/your-filter-url"
-                value={form.filterUrl}
-                onChange={(e) => handleFormFieldChange("filterUrl", e)}
-              />
-              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                Add a direct link to your filter on the social media platform
-              </p>
-            </div>
-
-            {/* Filter Type */}
-            <div>
-              <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
-                Filter Type
-              </label>
-              <input
-                type="text"
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-                placeholder="Face Filter, World Effect, etc."
-                value={form.filterType}
-                onChange={(e) => handleFormFieldChange("filterType", e)}
-              />
-            </div>
-
-            {/* Filter Instructions */}
-            <div>
-              <label className="block text-gray-700 dark:text-gray-300 mb-2 font-medium">
-                Usage Instructions
-              </label>
-              <textarea
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-gray-200"
-                placeholder="How to use this filter (e.g., Scan the QR code with Snapchat, open your camera and...)"
-                value={form.filterInstructions}
-                onChange={(e) => handleFormFieldChange("filterInstructions", e)}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Submit button */}
-        <div className="flex justify-center mt-8">
-          <button
-            type="submit"
-            className="px-8 py-3 bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-700 hover:to-rose-600 text-white rounded-lg font-medium text-lg shadow-lg transform transition hover:scale-105 disabled:opacity-70"
-            disabled={isLoading}
+      <div className="bg-white dark:bg-gray-900 min-h-screen">
+        <div className="container mx-auto py-10 px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
           >
-            {isLoading ? (
-              <div className="flex items-center justify-center">
-                <LoadingSpinner />
-                <span className="ml-2">Creating...</span>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+              Create a New Campaign
+            </h1>
+            
+            {/* Demo Mode Indicator */}
+            {DEMO_MODE && (
+              <div className="mb-6 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 p-4 rounded-md">
+                <strong>Demo Mode Active:</strong> Campaign creation will be simulated for demonstration purposes.
               </div>
-            ) : (
-              "Create Campaign"
             )}
-          </button>
-        </div>
-      </form>
 
-      {showEmailPrompt && <EmailPrompt />}
+            {error && (
+              <Notification
+                message={error}
+                type="error"
+                isVisible={notificationVisible}
+                onClose={() => setNotificationVisible(false)}
+              />
+            )}
+
+            {successMessage && (
+              <Notification
+                message={successMessage}
+                type="success"
+                isVisible={notificationVisible}
+                onClose={() => setNotificationVisible(false)}
+              />
+            )}
+
+            {/* Email prompt modal */}
+            {showEmailPrompt && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-md w-full">
+                  <h3 className="text-xl font-semibold mb-4">Email Required</h3>
+                  <p className="mb-4">Please provide your email to continue with campaign creation.</p>
+                  <form onSubmit={handleEmailSubmit}>
+                    <input
+                      type="email"
+                      className="w-full p-2 mb-4 border rounded"
+                      placeholder="Your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        className="px-4 py-2 border rounded"
+                        onClick={() => setShowEmailPrompt(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-red-600 text-white rounded"
+                      >
+                        Continue
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6">
+              {/* Basic Campaign Information */}
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4 text-red-600 dark:text-red-500">
+                  Basic Information
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="col-span-2">
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                      Campaign Title *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Give your campaign a catchy title"
+                      value={form.title}
+                      onChange={(e) => handleFormFieldChange('title', e)}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500"
+                      maxLength={50}
+                      required
+                    />
+                    <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {form.title.length}/50 characters
+                    </div>
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                      Campaign Description *
+                    </label>
+                    <textarea
+                      placeholder="Describe your campaign and its social impact"
+                      value={localDescription}
+                      onChange={handleChange}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 h-32"
+                      maxLength={500}
+                      required
+                    />
+                    <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {form.description.length}/500 characters
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                      Category *
+                    </label>
+                    <select
+                      value={form.category}
+                      onChange={(e) => handleFormFieldChange('category', e)}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 bg-white dark:bg-gray-800"
+                      aria-label="Campaign Category"
+                      required
+                    >
+                      <option value="Education">Education</option>
+                      <option value="Environment">Environment</option>
+                      <option value="Health">Health</option>
+                      <option value="Equality">Equality</option>
+                      <option value="Peace">Peace & Justice</option>
+                      <option value="Economic">Economic Growth</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                      Creator Name *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Your name or organization name"
+                      value={form.creatorName}
+                      onChange={(e) => handleFormFieldChange('creatorName', e)}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500"
+                      maxLength={50}
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                      Funding Target (DOT) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      placeholder="Amount in DOT"
+                      value={form.target}
+                      onChange={(e) => handleFormFieldChange('target', e)}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500"
+                      required
+                    />
+                    <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      Minimum 0.1 DOT
+                    </div>
+                  </div>
+                  
+                        <div>
+                        <label className="block text-gray-700 dark:text-gray-300 mb-2" htmlFor="campaign-deadline">
+                          Campaign Deadline *
+                        </label>
+                        <input
+                          id="campaign-deadline"
+                          type="date"
+                          value={form.deadline}
+                          onChange={(e) => handleFormFieldChange('deadline', e)}
+                          min={minDate}
+                          className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 bg-white dark:bg-gray-800"
+                          required
+                          aria-label="Campaign Deadline"
+                          title="Select the end date for your campaign"
+                        />
+                        <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          Choose a date when your campaign will end
+                        </div>
+                        </div>
+                </div>
+              </div>
+              
+              {/* Campaign Imagery */}
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4 text-red-600 dark:text-red-500">
+                  Campaign Imagery
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                      Main Campaign Image *
+                    </label>
+                    
+                    <div className="mt-2 flex justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 relative">
+                      {form.mainImage ? (
+                        <div className="text-center">
+                          <img
+                            src={form.mainImage}
+                            alt="Main campaign"
+                            className="mx-auto h-40 object-cover rounded-md"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setForm({ ...form, mainImage: '' });
+                              setMainImageFile(null);
+                              setMainImageUploadProgress(0);
+                            }}
+                            className="mt-2 text-red-600 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-center relative">
+                          <div className="flex flex-col items-center justify-center">
+                            <svg
+                              className="mx-auto h-12 w-12 text-gray-400"
+                              stroke="currentColor"
+                              fill="none"
+                              viewBox="0 0 48 48"
+                              aria-hidden="true"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8 14v20c0 4.418 7.163 8 16 8 1.381 0 2.721-.087 4-.252M8 14c0 4.418 7.163 8 16 8s16-3.582 16-8M8 14c0-4.418 7.163-8 16-8s16 3.582 16 8m0 0v14m0-4c0 4.418-7.163 8-16 8S8 28.418 8 24m32 10v6m0 0v6m0-6h6m-6 0h-6"
+                              />
+                            </svg>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                              Click to upload or drag and drop
+                            </p>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                              PNG, JPG, GIF up to 5MB
+                            </p>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageChange(e, 'main')}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            title="Upload main campaign image"
+                            aria-label="Upload main campaign image"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    
+                    {mainImageUploadProgress > 0 && (
+                      <div className="mt-2">
+                        <div className="bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div 
+                            className="bg-red-600 h-2 rounded-full" 
+                            style={{ width: `${mainImageUploadProgress}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          Uploading: {mainImageUploadProgress}%
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                      Filter QR Code/Preview (Optional)
+                    </label>
+                    
+                    <div className="mt-2 flex justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 relative">
+                      {form.filterImage ? (
+                        <div className="text-center">
+                          <img
+                            src={form.filterImage}
+                            alt="Filter preview"
+                            className="mx-auto h-40 object-cover rounded-md"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setForm({ ...form, filterImage: '' });
+                              setFilterImageFile(null);
+                              setFilterImageUploadProgress(0);
+                            }}
+                            className="mt-2 text-red-600 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-center relative">
+                          <div className="flex flex-col items-center justify-center">
+                            <svg
+                              className="mx-auto h-12 w-12 text-gray-400"
+                              stroke="currentColor"
+                              fill="none"
+                              viewBox="0 0 48 48"
+                              aria-hidden="true"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8 14v20c0 4.418 7.163 8 16 8 1.381 0 2.721-.087 4-.252M8 14c0 4.418 7.163 8 16 8s16-3.582 16-8M8 14c0-4.418 7.163-8 16-8s16 3.582 16 8m0 0v14m0-4c0 4.418-7.163 8-16 8S8 28.418 8 24m32 10v6m0 0v6m0-6h6m-6 0h-6"
+                              />
+                            </svg>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                              Upload a QR code or filter preview
+                            </p>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                              PNG, JPG, GIF up to 5MB
+                            </p>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageChange(e, 'filter')}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            title="Upload filter QR code or preview image"
+                            aria-label="Upload filter QR code or preview image"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    
+                    {filterImageUploadProgress > 0 && (
+                      <div className="mt-2">
+                        <div className="bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div 
+                            className="bg-red-600 h-2 rounded-full" 
+                            style={{ width: `${filterImageUploadProgress}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          Uploading: {filterImageUploadProgress}%
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* AR Filter Details */}
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4 text-red-600 dark:text-red-500">
+                  AR Filter Details
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                      Filter Platform
+                    </label>
+                    <select
+                      value={form.filterPlatform}
+                      onChange={(e) => handleFormFieldChange('filterPlatform', e)}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 bg-white dark:bg-gray-800"
+                      aria-label="Filter Platform"
+                    >
+                      <option value="Instagram">Instagram</option>
+                      <option value="Snapchat">Snapchat</option>
+                      <option value="TikTok">TikTok</option>
+                      <option value="Meta">Meta Spark</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                      Filter Type
+                    </label>
+                    <select
+                      value={form.filterType}
+                      onChange={(e) => handleFormFieldChange('filterType', e)}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 bg-white dark:bg-gray-800"
+                      aria-label="Filter Type"
+                    >
+                      <option value="Face">Face Filter</option>
+                      <option value="World">World Effect</option>
+                      <option value="Background">Background Effect</option>
+                      <option value="Interactive">Interactive Game</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                      Filter URL
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="URL to access the filter"
+                      value={form.filterUrl}
+                      onChange={(e) => handleFormFieldChange('filterUrl', e)}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 dark:text-gray-300 mb-2">
+                      Usage Instructions
+                    </label>
+                    <textarea
+                      placeholder="How to access and use the filter"
+                      value={form.filterInstructions}
+                      onChange={(e) => handleFormFieldChange('filterInstructions', e)}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 h-24"
+                      maxLength={200}
+                    />
+                    <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {form.filterInstructions.length}/200 characters
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Form Submission */}
+              <div className="flex justify-end space-x-4 mt-8">
+                <button
+                  type="button"
+                  onClick={() => navigate("/home")}
+                  className="px-6 py-3 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className={`px-6 py-3 bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-700 hover:to-rose-600 text-white rounded-lg transition-colors ${
+                    isLoading ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
+                >
+                  {isLoading ? (
+                    <div className="flex items-center">
+                      <LoadingSpinner />
+                      <span className="ml-2">Creating Campaign...</span>
+                    </div>
+                  ) : (
+                    "Create Campaign"
+                  )}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      </div>
     </Layout>
   );
 };

@@ -130,20 +130,11 @@ const DisplayCampaigns: React.FC<DisplayCampaignsProps> = ({ title, isLoading, c
                     <div className="flex justify-between mt-[15px] gap-2">
                       <div className="flex flex-col">
                         <h4 className="font-semibold text-[14px] text-red-600 dark:text-red-500 leading-[22px]">
-                          {campaign.amountCollected} ICP
+                           DOT
                         </h4>
-                        <p className="mt-[3px] font-normal text-[12px] text-gray-600 dark:text-gray-300 leading-[18px] sm:max-w-[120px] truncate">
-                          Raised of {campaign.target}
-                        </p>
+                        
                       </div>
-                      <div className="flex flex-col">
-                        <h4 className="font-semibold text-[14px] text-red-600 dark:text-red-500 leading-[22px]">
-                          {new Date(campaign.deadline).toLocaleDateString()}
-                        </h4>
-                        <p className="mt-[3px] font-normal text-[12px] text-gray-600 dark:text-gray-300 leading-[18px] sm:max-w-[120px] truncate">
-                          Days Left
-                        </p>
-                      </div>
+                      
                     </div>
                   </div>
                 </div>

@@ -1,39 +1,56 @@
 // src/config/debug.js
-// This file can be imported to debug environment configuration issues
+// Configuration file for debug settings across the application
 
-import { config } from './env';
+// Set global debug flags based on environment
+const isProduction = process.env.NODE_ENV === 'production';
 
-console.log("========== ICP Environment Configuration Debug ==========");
-console.log("Canister IDs:");
-console.log("- ASSET: ", config.canisterIds.ASSET || "UNDEFINED!");
-console.log("- CAMPAIGN: ", config.canisterIds.CAMPAIGN || "UNDEFINED!");
-console.log("- USER: ", config.canisterIds.USER || "UNDEFINED!");
-console.log("- FRONTEND: ", config.canisterIds.FRONTEND || "UNDEFINED!");
-console.log("IC Host:", config.icHost);
-console.log("isDevelopment:", config.isDevelopment);
-console.log("Process Environment:");
-console.log("- NODE_ENV:", process.env.NODE_ENV);
-console.log("- ASSET_CANISTER_ID:", process.env.ASSET_CANISTER_ID);
-console.log("- CAMPAIGN_CANISTER_ID:", process.env.CAMPAIGN_CANISTER_ID);
-console.log("- USER_CANISTER_ID:", process.env.USER_CANISTER_ID);
-console.log("- REACT_APP_ASSET_CANISTER_ID:", process.env.REACT_APP_ASSET_CANISTER_ID);
-console.log("- REACT_APP_CAMPAIGN_CANISTER_ID:", process.env.REACT_APP_CAMPAIGN_CANISTER_ID);
-console.log("- REACT_APP_USER_CANISTER_ID:", process.env.REACT_APP_USER_CANISTER_ID);
-console.log("=======================================================");
-
-// Export a function to run this debug info on demand
-export const printDebugInfo = () => {
-  console.log("========== ICP Environment Configuration Debug ==========");
-  console.log("Canister IDs:");
-  console.log("- ASSET: ", config.canisterIds.ASSET || "UNDEFINED!");
-  console.log("- CAMPAIGN: ", config.canisterIds.CAMPAIGN || "UNDEFINED!");
-  console.log("- USER: ", config.canisterIds.USER || "UNDEFINED!");
-  console.log("- FRONTEND: ", config.canisterIds.FRONTEND || "UNDEFINED!");
-  console.log("IC Host:", config.icHost);
-  console.log("isDevelopment:", config.isDevelopment);
-  console.log("=======================================================");
+// Debug configuration object
+const debugConfig = {
+  // Master switch - when false, all debug features are disabled
+  enableDebug: !isProduction,
   
-  return config;
+  // Individual feature flags
+  features: {
+    logApiCalls: !isProduction,
+    showDebugPanels: !isProduction,
+    mockData: false, // We want this off even in development unless explicitly needed
+    verboseLogging: !isProduction,
+    profilePerformance: !isProduction && process.env.REACT_APP_PROFILE === 'true'
+  },
+  
+  // Log level configuration
+  logLevel: isProduction ? 'error' : 'debug',
+  
+  // Debug tools configuration
+  tools: {
+    consoleOverride: !isProduction,
+    reduxDevTools: !isProduction,
+    reactDevTools: !isProduction
+  },
+  
+  // Helper functions
+  shouldLog: (level) => {
+    const levels = {
+      debug: 0,
+      info: 1,
+      warn: 2,
+      error: 3
+    };
+    
+    return levels[level] >= levels[debugConfig.logLevel];
+  }
 };
 
-export default { printDebugInfo, config };
+// Export a function to log debug info on demand (only in development)
+export const printDebugInfo = () => {
+  if (isProduction) return;
+  
+  console.log("========== FilterFund Debug Configuration ==========");
+  console.log("Environment:", process.env.NODE_ENV);
+  console.log("Debug enabled:", debugConfig.enableDebug);
+  console.log("Log level:", debugConfig.logLevel);
+  console.log("Feature flags:", debugConfig.features);
+  console.log("=======================================================");
+};
+
+export default { printDebugInfo, debugConfig };

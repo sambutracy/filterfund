@@ -3,19 +3,13 @@ import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
-import ProgressBar from '../components/ProgressBar'; // Add this import
+import ProgressBar from '../components/ProgressBar';
 import { PolkadotService, Campaign } from '../services/polkadot-service';
-import DebugPanel from '../components/DebugPanel';
 import { calculateProgress } from '../utils/calculations';
 import SkeletonCard from '../components/SkeletonCard';
 
-// Config object for environment settings
-const config = {
-  isDevelopment: process.env.NODE_ENV === 'development'
-};
-
-// Configure logging for debugging
-const ENABLE_DEBUG_LOGGING = true;
+// Configure logging only for development
+const ENABLE_DEBUG_LOGGING = process.env.NODE_ENV === 'development';
 const logDebug = (...args: any[]) => {
   if (ENABLE_DEBUG_LOGGING) {
     console.log('[Homepage]', ...args);
@@ -201,7 +195,7 @@ const HomePage: React.FC = () => {
       const data = await PolkadotService.getTopCampaigns(10);
       
       // Map campaigns to filters format for display
-      const filtersFromCampaigns = data.map(campaign => ({
+      const filtersFromCampaigns = data.map((campaign: Campaign) => ({
         id: campaign.id,
         title: campaign.title,
         image: campaign.mainImage,
@@ -267,7 +261,7 @@ const HomePage: React.FC = () => {
   </motion.div>
 )}
 
-        {/* Add this after the welcome message but before the tabs */}
+        {/* Stats section */}
         {!isLoading && (
   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 my-8">
     <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow-sm">
@@ -288,7 +282,6 @@ const HomePage: React.FC = () => {
       </div>
     </div>
     
-    {/* If you track this data */}
     <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center shadow-sm">
       <div className="text-2xl font-bold text-red-600 dark:text-red-500">
         {campaigns.reduce((sum, campaign) => sum + (Number(campaign.amountCollected) || 0), 0).toLocaleString()}
@@ -423,14 +416,7 @@ const HomePage: React.FC = () => {
           </>
     )}
 
-    {config.isDevelopment && (
-      <div className="mt-8 border-t pt-8">
-        <h3 className="text-xl font-semibold mb-4">Developer Tools</h3>
-        <DebugPanel />
-      </div>
-    )}
-
-    {/* Add this after your campaign grid */}
+    {/* Call to action section */}
     <div className="mt-12 bg-gradient-to-r from-red-600 to-rose-500 dark:from-red-700 dark:to-rose-600 text-white rounded-xl p-8 text-center">
       <h3 className="text-2xl font-bold mb-3">Ready to Start Your Campaign?</h3>
       <p className="mb-6 max-w-xl mx-auto">

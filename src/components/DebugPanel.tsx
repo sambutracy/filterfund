@@ -7,6 +7,7 @@ const NETWORK_OPTIONS = [
   { label: "Astar (Parachain)", value: "wss://rpc.astar.network" }
 ];
 
+// This component will only be rendered in development mode
 const DebugPanel: React.FC = () => {
   const [debugResult, setDebugResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -55,6 +56,12 @@ const DebugPanel: React.FC = () => {
     }
   };
 
+  // In production, this component will render nothing
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
+
+  // Development-only rendering
   return (
     <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
       <h2 className="text-lg font-semibold mb-4">Polkadot Network Debug</h2>

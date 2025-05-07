@@ -122,9 +122,14 @@ export class CampaignService {
     }
   }
   
-  static async donateToCampaign(campaignId: string, amount: number): Promise<boolean> {
+  static async donateToCampaign(
+    campaignId: string, 
+    amount: number, 
+    message?: string, 
+    isAnonymous: boolean = false
+  ): Promise<boolean | string> {
     try {
-      return await PolkadotService.donateToCampaign(campaignId, amount);
+      return await PolkadotService.donateToCampaign(campaignId, amount, message, isAnonymous);
     } catch (error) {
       console.error(`Error donating to campaign ${campaignId}:`, error);
       throw error;
