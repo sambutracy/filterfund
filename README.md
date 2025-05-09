@@ -1,11 +1,11 @@
-# AR for Equality
+# Filterfund
 *Amplifying Social Impact Through AR Filters*
 
-This is the source repository for the May 2025 Polkadot Hackathon submission of the AR for Equality project by Victor Sambu and team.
+This is the source repository for the May 2025 Polkadot Hackathon submission of the AR for Equality project by Tracy Sambu and Kevin Mucyo.
 
 ## Introduction
 
-AR for Equality is an innovative platform that leverages Augmented Reality (AR) filters to raise awareness and funds for social causes. By combining crowdfunding with shareable AR experiences, we enable creators to build campaigns that spread meaningful messages across social media platforms while collecting donations through the Polkadot ecosystem.
+Filterfund is an innovative platform that leverages Augmented Reality (AR) filters to raise awareness and funds for social causes. By combining crowdfunding with shareable AR experiences, we enable creators to build campaigns that spread meaningful messages across social media platforms while collecting donations through the Polkadot ecosystem.
 
 Our platform addresses the disconnect between social media engagement and charitable giving. While traditional fundraising relies on donation pages that break the user experience, AR for Equality embeds the cause directly into shareable AR content that can go viral across platforms like Instagram, Snapchat, and TikTok. Users who interact with these filters are exposed to the cause and can donate directly via the blockchain, creating a seamless cycle of awareness and action.
 
@@ -15,13 +15,13 @@ Our implementation leverages Polkadot's Substrate framework and the ink! smart c
 
 AR for Equality aims to revolutionize how social causes leverage digital engagement by combining the viral nature of AR filters with the security and transparency of blockchain technology.
 
-## Short Summary (<150 chars)
+## Short Summary 
 AR for Equality combines AR filters with Polkadot-powered crowdfunding to turn social media sharing into real-world impact.
 
 ## Demo Video
 Watch our demonstration video:
 
-[![AR for Equality Demo](https://img.youtube.com/vi/your-video-id/0.jpg)](https://youtu.be/your-demo-link)
+[[AR for Equality Demo](https://youtu.be/5cbaudVNR9E)]
 
 ## Screenshots
 
@@ -268,15 +268,13 @@ Specific Polkadot SDKs and tools used:
   - Full-stack development with React/TypeScript
   - Smart contract implementation in ink!
   - IPFS integration
+  - Smart contract architecture
+  - Testing and deployment
 
-- **[Team Member 2]** - UI/UX Design & AR Specialist
+- **Kevin Mucyo** - UI/UX Design & AR Specialist
   - AR filter development
   - UI/UX design
   - User research
-
-- **[Team Member 3]** - Blockchain Developer
-  - Smart contract architecture
-  - Testing and deployment
   - Security auditing
 
 ## Presentation
@@ -298,7 +296,7 @@ Watch our presentation:
   - Released under MIT License
   - Code available on GitHub
 
-- ✅ **Short Summary (<150 chars)**
+- ✅ **Short Summary**
   - AR for Equality combines AR filters with Polkadot-powered crowdfunding to turn social media sharing into real-world impact.
 
 - ✅ **Full Description**
@@ -325,7 +323,7 @@ Watch our presentation:
 - ✅ **Smart Contract Explanation**
   - See Smart Contract Details section above
 
-- ✅ **Explanatory Video with Audio**
+- ✅ **Explanatory Video**
   - See Presentation section above
 
 - ✅ **Block Explorer Link**
@@ -352,7 +350,7 @@ Watch our presentation:
 
 ## AI Tools Used in Development
 
-- GitHub Copilot - Code completion and pair programming
+- GitHub Copilot cursor and Claude- Code completion and pair programming
 - Midjourney - Design inspiration and mockup generation
 - ChatGPT - Documentation assistance and debugging support
 
@@ -362,7 +360,7 @@ Distributed under the MIT License. See [`LICENSE`](./LICENSE) for more informati
 
 ## Contact
 
-Project Link: [https://github.com/sambutracy/ar-for-equality](https://github.com/sambutracy/ar-for-equality)
+Project Link: [https://github.com/sambutracy/filterfund](https://github.com/sambutracy/filterfund)
 
 ---
 
